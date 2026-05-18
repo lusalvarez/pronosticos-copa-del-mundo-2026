@@ -618,10 +618,10 @@ function showConfirmationModal(dayGroup, dayPredictions, completedCount, totalCo
     const isEmpty = !pred || pred.home === "" || pred.away === "";
     const firstGoalTeam =
       pred?.firstGoal === "home"
-        ? match.homeTeam
+        ? `⚽ ${match.homeTeam}`
         : pred?.firstGoal === "away"
-          ? match.awayTeam
-          : "—";
+          ? `⚽ ${match.awayTeam}`
+          : "❌ No seleccionado";
     
     tableHTML += `
       <div style="padding: 0.75rem; border-bottom: 1px solid #e5e7eb; ${isEmpty ? 'background: #fee2e2;' : 'background: #f0fdf4;'}">
@@ -632,7 +632,7 @@ function showConfirmationModal(dayGroup, dayPredictions, completedCount, totalCo
           <div style="text-align: center; font-weight: bold; font-size: 1.1rem; ${isEmpty ? 'color: #991b1b;' : 'color: #065f46;'}">
             ${isEmpty ? '❌ Vacío' : `${pred.home} - ${pred.away}`}
           </div>
-          <div style="text-align: center; font-weight: 600; color: ${pred?.firstGoal ? '#1d4ed8' : '#6b7280'};">
+          <div style="text-align: center; font-weight: 700; color: ${pred?.firstGoal ? '#1d4ed8' : '#991b1b'}; background: ${pred?.firstGoal ? '#dbeafe' : '#fee2e2'}; padding: 0.35rem 0.5rem; border-radius: 6px;">
             ${firstGoalTeam}
           </div>
         </div>

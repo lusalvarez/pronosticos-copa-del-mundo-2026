@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nettoyer les participants supprimés</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #ef4444;
+            padding-bottom: 10px;
+        }
+        .info {
+            background: #fef3c7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #f59e0b;
+        }
+        .participant-list {
+            margin: 20px 0;
+        }
+        .participant-item {
+            background: #f3f4f6;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .participant-item.to-delete {
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .success {
+            background: #d1fae5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #10b981;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ef4444;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Nettoyer les Participants Supprimés</h1>
+        
+        <div class="info">
+            <strong>⚠️ Problème détecté :</strong><br>
+            Quand vous supprimez un participant dans l'écran admin, il est supprimé du localStorage mais ses données restent dans Firebase.
+            C'est pourquoi il réapparaît dans la page de consultation et dans l'affichage des pronostics.
+            <br><br>
+            <strong>Solution :</strong> Ce script va lister tous les participants dans Firebase et vous permettre de les supprimer définitivement.
+        </div>
+
+        <div id="loading" class="loading">
+            ⏳ Chargement des participants depuis Firebase...
+        </div>
+
+        <div id="result" style="display: none;">
+            <h2>Participants dans Firebase</h2>
+            <div id="participants-list" class="participant-list"></div>
+            
+            <div style="margin-top: 30px; text-align: center;">
+                <button id="delete-all-btn" class="btn-danger" style="display: none;">
+                    🗑️ Supprimer tous les participants sélectionnés
+                </button>
+            </div>
+        </div>
+
+        <div id="message"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <!-- Configuration Firebase -->
+    <script src="firebase-config.js"></script>
+
+    <script>
+        let participantsToDelete = new Set();
+
+        function showMessage(message, type = 'info') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = type;
+            messageDiv.innerHTML = message;
+            messageDiv.style.display = 'block';
+        }
+
+        function loadParticipants() {
+            const participantsRef = database.ref('participants');
+            
+            participantsRef.once('value')
+                .then(snapshot => {
+                    const loadingDiv = document.getElementById('loading');
+                    const resultDiv = document.getElementById('result');
+                    const participantsList = document.getElementById('participants-list');
+                    const deleteAllBtn = document.getElementById('delete-all-btn');
+
+                    loadingDiv.style.display = 'none';
+                    resultDiv.style.display = 'block';
+
+                    const participants = snapshot.val();
+
+                    if (!participants || Object.keys(participants).length === 0) {
+                        participantsList.innerHTML = '<p style="text-align: center; color: #666;">Aucun participant trouvé dans Firebase.</p>';
+                        return;
+                    }
+
+                    participantsList.innerHTML = '';
+                    
+                    Object.keys(participants).forEach(firebaseId => {
+                        const participant = participants[firebaseId];
+                        const participantName = participant.participantName || participant.name || 'Sans nom';
+                        const predictionCount = participant.predictions ? participant.predictions.length : 0;
+
+                        const item = document.createElement('div');
+                        item.className = 'participant-item';
+                        item.innerHTML = `
+                            <div>
+                                <strong>${participantName}</strong><br>
+                                <small style="color: #666;">ID Firebase: ${firebaseId}</small><br>
+                                <small style="color: #666;">Pronostics: ${predictionCount}</small>
+                            </div>
+                            <div>
+                                <label style="cursor: pointer;">
+                                    <input type="checkbox" class="delete-checkbox" data-firebase-id="${firebaseId}" data-name="${participantName}">
+                                    Supprimer
+                                </label>
+                            </div>
+                        `;
+                        participantsList.appendChild(item);
+                    });
+
+                    // Gérer les checkboxes
+                    document.querySelectorAll('.delete-checkbox').forEach(checkbox => {
+                        checkbox.addEventListener('change', (e) => {
+                            const firebaseId = e.target.dataset.firebaseId;
+                            const item = e.target.closest('.participant-item');
+                            
+                            if (e.target.checked) {
+                                participantsToDelete.add(firebaseId);
+                                item.classList.add('to-delete');
+                            } else {
+                                participantsToDelete.delete(firebaseId);
+                                item.classList.remove('to-delete');
+                            }
+
+                            deleteAllBtn.style.display = participantsToDelete.size > 0 ? 'block' : 'none';
+                        });
+                    });
+
+                    // Bouton de suppression
+                    deleteAllBtn.addEventListener('click', deleteSelectedParticipants);
+                })
+                .catch(error => {
+                    document.getElementById('loading').style.display = 'none';
+                    showMessage(`❌ Erreur lors du chargement: ${error.message}`, 'error');
+                });
+        }
+
+        async function deleteSelectedParticipants() {
+            if (participantsToDelete.size === 0) {
+                return;
+            }
+
+            const confirmMessage = `⚠️ Êtes-vous sûr de vouloir supprimer ${participantsToDelete.size} participant(s) ?\n\nCette action est irréversible !`;
+            
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+
+            const deleteAllBtn = document.getElementById('delete-all-btn');
+            deleteAllBtn.disabled = true;
+            deleteAllBtn.textContent = '⏳ Suppression en cours...';
+
+            try {
+                const participantsRef = database.ref('participants');
+                
+                for (const firebaseId of participantsToDelete) {
+                    await participantsRef.child(firebaseId).remove();
+                    console.log(`✅ Participant ${firebaseId} supprimé`);
+                }
+
+                showMessage(`✅ ${participantsToDelete.size} participant(s) supprimé(s) avec succès !<br><br>Les pages de consultation se mettront à jour automatiquement.`, 'success');
+                
+                // Recharger la liste
+                participantsToDelete.clear();
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+
+            } catch (error) {
+                showMessage(`❌ Erreur lors de la suppression: ${error.message}`, 'error');
+                deleteAllBtn.disabled = false;
+                deleteAllBtn.textContent = '🗑️ Supprimer tous les participants sélectionnés';
+            }
+        }
+
+        // Charger au démarrage
+        loadParticipants();
+    </script>
+</body>
+</html>
