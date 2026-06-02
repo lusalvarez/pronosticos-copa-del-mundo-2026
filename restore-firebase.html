@@ -602,8 +602,11 @@
                 showStatus('🔄 Suppression des données existantes...', 'info');
                 updateProgress(10);
 
-                // Supprimer toutes les données existantes
-                await database.ref('/').remove();
+                // Supprimer les données existantes de manière ciblée
+                await Promise.all([
+                    database.ref('/participants').remove(),
+                    database.ref('/matches').remove()
+                ]);
                 updateProgress(30);
 
                 showStatus('🔄 Restauration des données...', 'info');
@@ -612,17 +615,20 @@
                 const data = backupData.data;
                 
                 // Restaurer par sections pour un meilleur suivi
+                const restorePromises = [];
+                
                 if (data.participants) {
-                    await database.ref('/participants').set(data.participants);
-                    updateProgress(50);
+                    restorePromises.push(database.ref('/participants').set(data.participants));
                 }
 
                 if (data.matches) {
-                    await database.ref('/matches').set(data.matches);
-                    updateProgress(80);
+                    restorePromises.push(database.ref('/matches').set(data.matches));
                 }
 
-                // Restaurer les autres données
+                await Promise.all(restorePromises);
+                updateProgress(80);
+
+                // Restaurer les autres données si présentes
                 const otherKeys = Object.keys(data).filter(key => key !== 'participants' && key !== 'matches');
                 for (const key of otherKeys) {
                     await database.ref(`/${key}`).set(data[key]);

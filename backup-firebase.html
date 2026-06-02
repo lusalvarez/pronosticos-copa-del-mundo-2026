@@ -297,11 +297,18 @@
                 backupBtn.innerHTML = '<div class="spinner"></div><span>Sauvegarde en cours...</span>';
                 showStatus('🔄 Récupération des données depuis Firebase...', 'info');
 
-                // Récupérer toutes les données
-                const snapshot = await database.ref('/').once('value');
-                const data = snapshot.val();
+                // Récupérer les données de manière ciblée (évite les problèmes de permissions)
+                const [participantsSnapshot, matchesSnapshot] = await Promise.all([
+                    database.ref('/participants').once('value'),
+                    database.ref('/matches').once('value')
+                ]);
 
-                if (!data) {
+                const data = {
+                    participants: participantsSnapshot.val() || {},
+                    matches: matchesSnapshot.val() || {}
+                };
+
+                if (!data.participants && !data.matches) {
                     showStatus('⚠️ Aucune donnée trouvée dans Firebase', 'error');
                     return;
                 }
