@@ -362,6 +362,9 @@ function renderPublicMatches() {
       const grid = document.createElement("div");
       grid.className = "predictions-grid";
 
+      // Vérifier si la journée est verrouillée pour afficher les pronostics
+      const showPredictions = isLocked;
+
       state.participants.forEach((participant) => {
         const prediction = match.predictions[participant.id] || { home: "", away: "", firstGoal: "" };
         const points = computePredictionPoints(prediction, match.actualScore);
@@ -371,12 +374,14 @@ function renderPublicMatches() {
         row.className = "prediction-row";
         
         let firstGoalDisplay = '';
-        if (prediction.firstGoal) {
+        if (showPredictions && prediction.firstGoal) {
           const firstGoalTeamName = prediction.firstGoal === 'home' ? match.homeTeam : match.awayTeam;
           firstGoalDisplay = `⚽ ${firstGoalTeamName}`;
           if (match.actualScore.firstGoalTeam) {
             firstGoalDisplay += firstGoalCorrect ? ' ✅' : ' ❌';
           }
+        } else if (!showPredictions) {
+          firstGoalDisplay = '🔒';
         }
         
         row.innerHTML = `
@@ -384,14 +389,14 @@ function renderPublicMatches() {
             <strong>${participant.name}</strong>
             <span class="small-text">Pronóstico</span>
           </div>
-          <div>${prediction.home === "" ? "-" : prediction.home}</div>
-          <div>${prediction.away === "" ? "-" : prediction.away}</div>
+          <div>${showPredictions ? (prediction.home === "" ? "-" : prediction.home) : "🔒"}</div>
+          <div>${showPredictions ? (prediction.away === "" ? "-" : prediction.away) : "🔒"}</div>
           <div>
             <span class="small-text">${firstGoalDisplay || '-'}</span>
           </div>
           <div>
             <span class="${match.actualScore.home === null ? "status-pending" : "status-success"}">
-              ${match.actualScore.home === null ? "Partido no jugado" : `${points} punto(s)`}
+              ${match.actualScore.home === null ? "Partido no jugado" : (showPredictions ? `${points} punto(s)` : "🔒")}
             </span>
           </div>
         `;
