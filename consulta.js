@@ -380,6 +380,10 @@ function renderPublicMatches() {
         const row = document.createElement("div");
         row.className = "prediction-row";
         
+        // Afficher les valeurs ou un cadenas selon le freeze
+        const homeValue = !showPredictions && prediction.home !== "" ? "🔒" : prediction.home;
+        const awayValue = !showPredictions && prediction.away !== "" ? "🔒" : prediction.away;
+        
         let firstGoalDisplay = '';
         if (showPredictions && prediction.firstGoal) {
           const firstGoalTeamName = prediction.firstGoal === 'home' ? match.homeTeam : match.awayTeam;
@@ -387,24 +391,23 @@ function renderPublicMatches() {
           if (match.actualScore.firstGoalTeam) {
             firstGoalDisplay += firstGoalCorrect ? ' ✅' : ' ❌';
           }
-        } else if (!showPredictions) {
-          // Avant le freeze, afficher "✓ Enviado" si le pronostic a été envoyé, sinon 🔒
-          firstGoalDisplay = predictionSent ? '✓ Enviado' : '🔒';
+        } else if (!showPredictions && prediction.firstGoal) {
+          firstGoalDisplay = '🔒';
         }
         
         row.innerHTML = `
           <div>
             <strong>${participant.name}</strong>
-            <span class="small-text">Pronóstico</span>
+            ${predictionSent ? '<span class="small-text" style="color: #10b981;">✓ Enviado</span>' : ''}
           </div>
-          <div>${showPredictions ? (prediction.home === "" ? "-" : prediction.home) : (predictionSent ? "✓ Enviado" : "🔒")}</div>
-          <div>${showPredictions ? (prediction.away === "" ? "-" : prediction.away) : (predictionSent ? "✓ Enviado" : "🔒")}</div>
+          <div>${showPredictions ? (prediction.home === "" ? "-" : prediction.home) : (homeValue || "-")}</div>
+          <div>${showPredictions ? (prediction.away === "" ? "-" : prediction.away) : (awayValue || "-")}</div>
           <div>
             <span class="small-text">${firstGoalDisplay || '-'}</span>
           </div>
           <div>
             <span class="${match.actualScore.home === null ? "status-pending" : "status-success"}">
-              ${match.actualScore.home === null ? "Partido no jugado" : (showPredictions ? `${points} punto(s)` : (predictionSent ? "✓ Enviado" : "🔒"))}
+              ${match.actualScore.home === null ? "Partido no jugado" : `${points} punto(s)`}
             </span>
           </div>
         `;
