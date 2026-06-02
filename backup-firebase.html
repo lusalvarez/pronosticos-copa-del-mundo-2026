@@ -254,10 +254,16 @@
             const matchesCount = data.matches ? Object.keys(data.matches).length : 0;
             
             let predictionsCount = 0;
-            if (data.matches) {
-                Object.values(data.matches).forEach(match => {
-                    if (match.predictions) {
-                        predictionsCount += Object.keys(match.predictions).length;
+            // Compter les pronostics depuis /participants (où ils sont réellement stockés)
+            if (data.participants) {
+                Object.values(data.participants).forEach(participant => {
+                    if (participant.predictions && Array.isArray(participant.predictions)) {
+                        // Compter seulement les pronostics non vides
+                        participant.predictions.forEach(pred => {
+                            if (pred.prediction && (pred.prediction.home !== "" || pred.prediction.away !== "")) {
+                                predictionsCount++;
+                            }
+                        });
                     }
                 });
             }
