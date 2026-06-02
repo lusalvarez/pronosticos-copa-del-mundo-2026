@@ -1086,7 +1086,7 @@ function renderAdminMatches() {
         row.innerHTML = `
           <div>
             <strong>${participant.name}</strong>
-            ${predictionSent ? '<span class="small-text" style="color: #10b981;">✓ Enviado por el participante</span>' : '<span class="small-text">Puntuación: 3 marcador exacto / 1 resultado correcto (primer gol = contador aparte)</span>'}
+            ${predictionSent ? '<span class="small-text" style="color: #10b981;">✓ Enviado por el participante</span>' : ''}
           </div>
           <label style="${disabledStyle}">
             Local
