@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restauration Firebase - Pronósticos Copa del Mundo</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+        }
+
+        .warning-box h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .warning-box ul {
+            margin-left: 20px;
+            color: #856404;
+        }
+
+        .warning-box li {
+            margin: 5px 0;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+        }
+
+        .info-box h3 {
+            color: #1976D2;
+            margin-bottom: 10px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            color: #555;
+        }
+
+        .info-box li {
+            margin: 5px 0;
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #f5576c;
+            background: #fff5f7;
+        }
+
+        .upload-area.dragover {
+            border-color: #f5576c;
+            background: #fff5f7;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            font-size: 0.9em;
+            color: #999;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 200px;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-restore {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-restore:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-restore:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-cancel {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background: #5a6268;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            display: block;
+        }
+
+        .file-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-info h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .file-info .detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .file-info .detail:last-child {
+            border-bottom: none;
+        }
+
+        .file-info .label {
+            font-weight: bold;
+            color: #666;
+        }
+
+        .file-info .value {
+            color: #333;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .confirmation-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .confirmation-modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content h2 {
+            color: #dc3545;
+            margin-bottom: 15px;
+        }
+
+        .modal-content p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #f5576c;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .progress-bar.show {
+            display: block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Restauration de la Base de Données</h1>
+        <p class="subtitle">Importez un fichier de sauvegarde pour restaurer Firebase</p>
+
+        <div class="warning-box">
+            <h3>⚠️ ATTENTION</h3>
+            <ul>
+                <li><strong>Cette opération remplacera TOUTES les données actuelles</strong></li>
+                <li>Assurez-vous d'avoir une sauvegarde récente avant de continuer</li>
+                <li>Cette action est IRRÉVERSIBLE</li>
+                <li>Vérifiez que le fichier de sauvegarde est valide</li>
+            </ul>
+        </div>
+
+        <div class="info-box">
+            <h3>ℹ️ Instructions</h3>
+            <ul>
+                <li>Sélectionnez un fichier de sauvegarde JSON</li>
+                <li>Vérifiez les informations affichées</li>
+                <li>Confirmez la restauration</li>
+                <li>Attendez la fin du processus</li>
+            </ul>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Cliquez ou glissez un fichier ici</div>
+            <div class="upload-subtext">Fichier JSON de sauvegarde uniquement</div>
+        </div>
+
+        <input type="file" id="fileInput" accept=".json">
+
+        <div id="fileInfo" class="file-info"></div>
+
+        <div id="stats" class="stats" style="display: none;"></div>
+
+        <div class="button-group" id="actionButtons" style="display: none;">
+            <button class="btn-restore" id="restoreBtn">
+                <span>🔄 Restaurer la Base de Données</span>
+            </button>
+            <button class="btn-cancel" id="cancelBtn">
+                <span>❌ Annuler</span>
+            </button>
+        </div>
+
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill">0%</div>
+        </div>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <!-- Modal de confirmation -->
+    <div class="confirmation-modal" id="confirmModal">
+        <div class="modal-content">
+            <h2>⚠️ Confirmation Requise</h2>
+            <p>
+                Vous êtes sur le point de <strong>REMPLACER TOUTES LES DONNÉES</strong> de la base Firebase.
+                <br><br>
+                Cette action est <strong>IRRÉVERSIBLE</strong>.
+                <br><br>
+                Êtes-vous absolument certain de vouloir continuer ?
+            </p>
+            <div class="modal-buttons">
+                <button class="btn-cancel" id="modalCancelBtn">Non, Annuler</button>
+                <button class="btn-restore" id="modalConfirmBtn">Oui, Restaurer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const statsDiv = document.getElementById('stats');
+        const actionButtons = document.getElementById('actionButtons');
+        const restoreBtn = document.getElementById('restoreBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const statusDiv = document.getElementById('status');
+        const confirmModal = document.getElementById('confirmModal');
+        const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+        const modalCancelBtn = document.getElementById('modalCancelBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+
+        let backupData = null;
+
+        function showStatus(message, type = 'info') {
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+        }
+
+        function updateProgress(percent) {
+            progressBar.classList.add('show');
+            progressFill.style.width = percent + '%';
+            progressFill.textContent = percent + '%';
+        }
+
+        function hideProgress() {
+            progressBar.classList.remove('show');
+            progressFill.style.width = '0%';
+        }
+
+        function showStats(data) {
+            const participantsCount = data.participants ? Object.keys(data.participants).length : 0;
+            const matchesCount = data.matches ? Object.keys(data.matches).length : 0;
+            
+            let predictionsCount = 0;
+            if (data.matches) {
+                Object.values(data.matches).forEach(match => {
+                    if (match.predictions) {
+                        predictionsCount += Object.keys(match.predictions).length;
+                    }
+                });
+            }
+
+            statsDiv.innerHTML = `
+                <div class="stat-card">
+                    <div class="number">${participantsCount}</div>
+                    <div class="label">Participants</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">${matchesCount}</div>
+                    <div class="label">Matchs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">${predictionsCount}</div>
+                    <div class="label">Pronostics</div>
+                </div>
+            `;
+            statsDiv.style.display = 'grid';
+        }
+
+        function displayFileInfo(backup) {
+            const metadata = backup.metadata || {};
+            const data = backup.data || {};
+
+            fileInfo.innerHTML = `
+                <h3>📋 Informations du Fichier</h3>
+                <div class="detail">
+                    <span class="label">Date de sauvegarde:</span>
+                    <span class="value">${metadata.backupDateFormatted || 'Non disponible'}</span>
+                </div>
+                <div class="detail">
+                    <span class="label">Application:</span>
+                    <span class="value">${metadata.application || 'Non spécifiée'}</span>
+                </div>
+                <div class="detail">
+                    <span class="label">Version:</span>
+                    <span class="value">${metadata.version || 'Non spécifiée'}</span>
+                </div>
+            `;
+            fileInfo.classList.add('show');
+
+            showStats(data);
+            actionButtons.style.display = 'flex';
+        }
+
+        function handleFile(file) {
+            if (!file || !file.name.endsWith('.json')) {
+                showStatus('❌ Veuillez sélectionner un fichier JSON valide', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                try {
+                    backupData = JSON.parse(e.target.result);
+                    
+                    if (!backupData.data) {
+                        showStatus('❌ Format de fichier invalide. Le fichier doit contenir une propriété "data"', 'error');
+                        return;
+                    }
+
+                    displayFileInfo(backupData);
+                    showStatus(`✅ Fichier chargé : ${file.name}`, 'success');
+                    
+                } catch (error) {
+                    showStatus(`❌ Erreur lors de la lecture du fichier : ${error.message}`, 'error');
+                }
+            };
+
+            reader.onerror = () => {
+                showStatus('❌ Erreur lors de la lecture du fichier', 'error');
+            };
+
+            reader.readAsText(file);
+        }
+
+        // Upload area events
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            handleFile(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            handleFile(file);
+        });
+
+        // Restore button
+        restoreBtn.addEventListener('click', () => {
+            confirmModal.classList.add('show');
+        });
+
+        // Cancel button
+        cancelBtn.addEventListener('click', () => {
+            location.reload();
+        });
+
+        // Modal buttons
+        modalCancelBtn.addEventListener('click', () => {
+            confirmModal.classList.remove('show');
+        });
+
+        modalConfirmBtn.addEventListener('click', async () => {
+            confirmModal.classList.remove('show');
+            await performRestore();
+        });
+
+        async function performRestore() {
+            try {
+                restoreBtn.disabled = true;
+                cancelBtn.disabled = true;
+                restoreBtn.innerHTML = '<div class="spinner"></div><span>Restauration en cours...</span>';
+                showStatus('🔄 Suppression des données existantes...', 'info');
+                updateProgress(10);
+
+                // Supprimer toutes les données existantes
+                await database.ref('/').remove();
+                updateProgress(30);
+
+                showStatus('🔄 Restauration des données...', 'info');
+                
+                // Restaurer les données
+                const data = backupData.data;
+                
+                // Restaurer par sections pour un meilleur suivi
+                if (data.participants) {
+                    await database.ref('/participants').set(data.participants);
+                    updateProgress(50);
+                }
+
+                if (data.matches) {
+                    await database.ref('/matches').set(data.matches);
+                    updateProgress(80);
+                }
+
+                // Restaurer les autres données
+                const otherKeys = Object.keys(data).filter(key => key !== 'participants' && key !== 'matches');
+                for (const key of otherKeys) {
+                    await database.ref(`/${key}`).set(data[key]);
+                }
+
+                updateProgress(100);
+
+                showStatus('✅ Restauration terminée avec succès ! La page va se recharger...', 'success');
+                
+                // Recharger la page après 3 secondes
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 3000);
+
+            } catch (error) {
+                console.error('Erreur lors de la restauration:', error);
+                showStatus(`❌ Erreur lors de la restauration : ${error.message}`, 'error');
+                restoreBtn.disabled = false;
+                cancelBtn.disabled = false;
+                restoreBtn.innerHTML = '<span>🔄 Restaurer la Base de Données</span>';
+                hideProgress();
+            }
+        }
+
+        // Message initial
+        showStatus('📁 Sélectionnez un fichier de sauvegarde pour commencer', 'info');
+    </script>
+</body>
+</html>
