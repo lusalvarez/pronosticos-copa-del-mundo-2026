@@ -1068,6 +1068,16 @@ function renderAdminMatches() {
         const isFromFirebase = firebaseParticipants.has(participant.name.toLowerCase());
         const isDisabled = isFromFirebase ? "disabled" : "";
         const disabledStyle = isFromFirebase ? "opacity: 0.6; cursor: not-allowed;" : "";
+        
+        // Vérifier si on doit masquer les pronostics (avant le freeze)
+        const showPredictions = isLocked;
+        
+        // Afficher les valeurs ou un cadenas selon le freeze
+        const homeValue = showPredictions ? prediction.home : (prediction.home !== "" ? "🔒" : "");
+        const awayValue = showPredictions ? prediction.away : (prediction.away !== "" ? "🔒" : "");
+        const firstGoalDisplay = showPredictions ?
+          (prediction.firstGoal === "home" ? "Local" : prediction.firstGoal === "away" ? "Visitante" : "-") :
+          (prediction.firstGoal ? "🔒" : "-");
 
         row.innerHTML = `
           <div>
@@ -1076,30 +1086,39 @@ function renderAdminMatches() {
           </div>
           <label style="${disabledStyle}">
             Local
-            <input type="number" min="0" value="${prediction.home}" data-side="home" ${isDisabled} />
+            ${showPredictions ?
+              `<input type="number" min="0" value="${prediction.home}" data-side="home" ${isDisabled} />` :
+              `<input type="text" value="${homeValue}" disabled style="text-align: center;" />`
+            }
           </label>
           <label style="${disabledStyle}">
             Visitante
-            <input type="number" min="0" value="${prediction.away}" data-side="away" ${isDisabled} />
+            ${showPredictions ?
+              `<input type="number" min="0" value="${prediction.away}" data-side="away" ${isDisabled} />` :
+              `<input type="text" value="${awayValue}" disabled style="text-align: center;" />`
+            }
           </label>
           <label style="${disabledStyle}">
             Primer gol
-            <select data-side="firstGoal" ${isDisabled}>
-              <option value="">-</option>
-              <option value="home" ${prediction.firstGoal === "home" ? "selected" : ""}>Local</option>
-              <option value="away" ${prediction.firstGoal === "away" ? "selected" : ""}>Visitante</option>
-            </select>
+            ${showPredictions ?
+              `<select data-side="firstGoal" ${isDisabled}>
+                <option value="">-</option>
+                <option value="home" ${prediction.firstGoal === "home" ? "selected" : ""}>Local</option>
+                <option value="away" ${prediction.firstGoal === "away" ? "selected" : ""}>Visitante</option>
+              </select>` :
+              `<input type="text" value="${firstGoalDisplay}" disabled style="text-align: center;" />`
+            }
           </label>
           <div>
             <span class="${match.actualScore.home === null ? "status-pending" : "status-success"}">
-              ${match.actualScore.home === null ? "Pendiente" : `${points} punto(s)`}
+              ${match.actualScore.home === null ? "Pendiente" : (showPredictions ? `${points} punto(s)` : "🔒")}
             </span>
           </div>
         `;
 
-        // Ne pas ajouter d'événements si les pronostics viennent de Firebase
-        if (!isFromFirebase) {
-          const inputs = row.querySelectorAll("input");
+        // Ne pas ajouter d'événements si les pronostics viennent de Firebase OU si on est avant le freeze
+        if (!isFromFirebase && showPredictions) {
+          const inputs = row.querySelectorAll("input[type='number']");
           inputs.forEach((input) => {
             input.addEventListener("change", () => {
               const target = match.predictions[participant.id] || { home: "", away: "", firstGoal: "" };
