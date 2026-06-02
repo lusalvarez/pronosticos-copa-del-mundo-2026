@@ -15,6 +15,9 @@ let state = {
   matches: []
 };
 
+// Variable globale pour stocker les participants qui ont envoyé des pronostics via Firebase
+let firebaseParticipants = new Set();
+
 // Éléments DOM
 const rankingTable = document.getElementById('ranking-table');
 const publicMatches = document.getElementById('public-matches');
@@ -370,6 +373,10 @@ function renderPublicMatches() {
         const points = computePredictionPoints(prediction, match.actualScore);
         const firstGoalCorrect = isFirstGoalCorrect(prediction, match.actualScore);
         
+        // Vérifier si ce participant a envoyé un pronostic pour ce match via Firebase
+        const key = `${participant.id}_${match.id}`;
+        const predictionSent = firebaseParticipants.has(key);
+        
         const row = document.createElement("div");
         row.className = "prediction-row";
         
@@ -381,7 +388,8 @@ function renderPublicMatches() {
             firstGoalDisplay += firstGoalCorrect ? ' ✅' : ' ❌';
           }
         } else if (!showPredictions) {
-          firstGoalDisplay = '🔒';
+          // Avant le freeze, afficher "✓ Enviado" si le pronostic a été envoyé, sinon 🔒
+          firstGoalDisplay = predictionSent ? '✓ Enviado' : '🔒';
         }
         
         row.innerHTML = `
@@ -389,14 +397,14 @@ function renderPublicMatches() {
             <strong>${participant.name}</strong>
             <span class="small-text">Pronóstico</span>
           </div>
-          <div>${showPredictions ? (prediction.home === "" ? "-" : prediction.home) : "🔒"}</div>
-          <div>${showPredictions ? (prediction.away === "" ? "-" : prediction.away) : "🔒"}</div>
+          <div>${showPredictions ? (prediction.home === "" ? "-" : prediction.home) : (predictionSent ? "✓ Enviado" : "🔒")}</div>
+          <div>${showPredictions ? (prediction.away === "" ? "-" : prediction.away) : (predictionSent ? "✓ Enviado" : "🔒")}</div>
           <div>
             <span class="small-text">${firstGoalDisplay || '-'}</span>
           </div>
           <div>
             <span class="${match.actualScore.home === null ? "status-pending" : "status-success"}">
-              ${match.actualScore.home === null ? "Partido no jugado" : (showPredictions ? `${points} punto(s)` : "🔒")}
+              ${match.actualScore.home === null ? "Partido no jugado" : (showPredictions ? `${points} punto(s)` : (predictionSent ? "✓ Enviado" : "🔒"))}
             </span>
           </div>
         `;
@@ -504,6 +512,9 @@ function listenToFirebaseUpdates() {
       
       console.log("📥 Datos recibidos:", Object.keys(firebaseData).length, "participantes");
       
+      // Réinitialiser le Set des participants Firebase
+      firebaseParticipants.clear();
+      
       // Créer ou mettre à jour les participants
       Object.values(firebaseData).forEach(participantData => {
         const participantName = participantData.participantName;
@@ -521,13 +532,21 @@ function listenToFirebaseUpdates() {
           console.log(`✅ Participante agregado: ${participantName}`);
         }
         
-        // Mettre à jour les prédictions
+        // Mettre à jour les prédictions et tracker les pronostics envoyés
         participantData.predictions.forEach((predictionData, index) => {
           if (state.matches[index]) {
             const prediction = predictionData.prediction;
             if (prediction && !prediction.hasOwnProperty('firstGoal')) {
               prediction.firstGoal = "";
             }
+            
+            // Marquer ce participant comme ayant envoyé un pronostic pour ce match
+            if (prediction && prediction.home !== "" && prediction.away !== "") {
+              const matchId = state.matches[index].id;
+              const key = `${participant.id}_${matchId}`;
+              firebaseParticipants.add(key);
+            }
+            
             state.matches[index].predictions[participant.id] = prediction;
           }
         });
