@@ -1066,23 +1066,27 @@ function renderAdminMatches() {
         
         // Vérifier si ce participant a envoyé ses pronostics via Firebase
         const isFromFirebase = firebaseParticipants.has(participant.name.toLowerCase());
-        const isDisabled = isFromFirebase ? "disabled" : "";
-        const disabledStyle = isFromFirebase ? "opacity: 0.6; cursor: not-allowed;" : "";
         
-        // Vérifier si on doit masquer les pronostics (avant le freeze)
+        // Vérifier si ce pronostic SPÉCIFIQUE a été envoyé (prediction existe et n'est pas vide)
+        const predictionSent = isFromFirebase && prediction.home !== "" && prediction.away !== "";
+        
+        const isDisabled = predictionSent ? "disabled" : "";
+        const disabledStyle = predictionSent ? "opacity: 0.6; cursor: not-allowed;" : "";
+        
+        // Vérifier si on doit masquer les pronostics (AVANT le freeze, on masque)
         const showPredictions = isLocked;
         
         // Afficher les valeurs ou un cadenas selon le freeze
-        const homeValue = showPredictions ? prediction.home : (prediction.home !== "" ? "🔒" : "");
-        const awayValue = showPredictions ? prediction.away : (prediction.away !== "" ? "🔒" : "");
-        const firstGoalDisplay = showPredictions ?
-          (prediction.firstGoal === "home" ? "Local" : prediction.firstGoal === "away" ? "Visitante" : "-") :
-          (prediction.firstGoal ? "🔒" : "-");
+        const homeValue = !showPredictions && prediction.home !== "" ? "🔒" : prediction.home;
+        const awayValue = !showPredictions && prediction.away !== "" ? "🔒" : prediction.away;
+        const firstGoalDisplay = !showPredictions && prediction.firstGoal ?
+          "🔒" :
+          (prediction.firstGoal === "home" ? "Local" : prediction.firstGoal === "away" ? "Visitante" : "-");
 
         row.innerHTML = `
           <div>
             <strong>${participant.name}</strong>
-            ${isFromFirebase ? '<span class="small-text" style="color: #10b981;">✓ Enviado por el participante</span>' : '<span class="small-text">Puntuación: 3 marcador exacto / 1 resultado correcto (primer gol = contador aparte)</span>'}
+            ${predictionSent ? '<span class="small-text" style="color: #10b981;">✓ Enviado por el participante</span>' : '<span class="small-text">Puntuación: 3 marcador exacto / 1 resultado correcto (primer gol = contador aparte)</span>'}
           </div>
           <label style="${disabledStyle}">
             Local
@@ -1111,7 +1115,7 @@ function renderAdminMatches() {
           </label>
           <div>
             <span class="${match.actualScore.home === null ? "status-pending" : "status-success"}">
-              ${match.actualScore.home === null ? "Pendiente" : (showPredictions ? `${points} punto(s)` : "🔒")}
+              ${match.actualScore.home === null ? "Pendiente" : `${points} punto(s)`}
             </span>
           </div>
         `;
