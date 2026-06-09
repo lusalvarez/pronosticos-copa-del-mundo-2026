@@ -1583,5 +1583,112 @@ function updateStats() {
 
 // Charger les données au démarrage
 loadSavedData();
+// Gérer le bouton "Cambiar mi contraseña" sur la page d'accueil
+const changePasswordBtn = document.getElementById("change-password-btn");
+if (changePasswordBtn) {
+  changePasswordBtn.addEventListener("click", async () => {
+    // Demander le nom du participant
+    const name = prompt("🎯 Ingresa tu nombre:");
+    
+    if (!name || name.trim() === "") {
+      return; // L'utilisateur a annulé
+    }
+    
+    // Demander l'ancien mot de passe
+    const oldPassword = prompt("🔐 Ingresa tu contraseña actual:");
+    
+    if (!oldPassword) {
+      return; // L'utilisateur a annulé
+    }
+    
+    // Vérifier que Firebase est disponible
+    if (typeof firebase === 'undefined' || !firebase.database) {
+      alert("❌ Firebase no está disponible. No se puede cambiar la contraseña.");
+      return;
+    }
+    
+    try {
+      const db = firebase.database();
+      const participantId = normalizeParticipantId(name.trim());
+      const participantRef = db.ref('participants/' + participantId);
+      
+      // Récupérer les données existantes
+      const snapshot = await participantRef.once('value');
+      
+      if (!snapshot.exists()) {
+        alert("❌ No se encontró ningún participante con ese nombre.\n\nVerifica que el nombre sea correcto.");
+        return;
+      }
+      
+      const existingData = snapshot.val();
+      
+      // Vérifier que l'ancien mot de passe est correct
+      const oldPasswordHash = hashPassword(oldPassword);
+      
+      // Vérifier d'abord avec passwordHash, puis avec l'ancien champ password
+      const storedPasswordHash = existingData.passwordHash || existingData.password;
+      
+      if (!storedPasswordHash) {
+        alert("❌ No se encontró contraseña para este participante.\n\nPor favor, contacta al administrador.");
+        return;
+      }
+      
+      // Vérifier le mot de passe (essayer aussi les variantes legacy)
+      let passwordMatch = (oldPasswordHash === storedPasswordHash);
+      
+      if (!passwordMatch) {
+        const legacyMatch = findLegacyPasswordMatch(oldPassword, storedPasswordHash);
+        passwordMatch = (legacyMatch !== null);
+      }
+      
+      if (!passwordMatch) {
+        alert("❌ Contraseña actual incorrecta.\n\nPor favor, intenta de nuevo o usa el botón '¿Olvidaste tu contraseña?'");
+        return;
+      }
+      
+      // Demander le nouveau mot de passe
+      const newPassword = prompt("🔑 Ingresa tu nueva contraseña (mínimo 4 caracteres):");
+      
+      if (!newPassword) {
+        return; // L'utilisateur a annulé
+      }
+      
+      if (newPassword.length < 4) {
+        alert("❌ La nueva contraseña debe tener al menos 4 caracteres.");
+        return;
+      }
+      
+      // Confirmer le nouveau mot de passe
+      const confirmPassword = prompt("🔑 Confirma tu nueva contraseña:");
+      
+      if (confirmPassword !== newPassword) {
+        alert("❌ Las contraseñas no coinciden. Por favor, intenta de nuevo.");
+        return;
+      }
+      
+      // Calculer le nouveau hash
+      const newPasswordHash = hashPassword(newPassword);
+      
+      // Mettre à jour uniquement le mot de passe
+      const updatedData = {
+        ...existingData,
+        passwordHash: newPasswordHash
+      };
+      
+      // Supprimer l'ancien champ password s'il existe
+      delete updatedData.password;
+      
+      // Sauvegarder dans Firebase
+      await participantRef.set(updatedData);
+      
+      alert("✅ ¡Contraseña cambiada con éxito!\n\nRecuerda usar tu nueva contraseña la próxima vez que inicies sesión.");
+      
+    } catch (error) {
+      console.error('Error al cambiar contraseña:', error);
+      alert("❌ Error al cambiar la contraseña. Por favor, intenta de nuevo.");
+    }
+  });
+}
+
 
 // Made with Bob
