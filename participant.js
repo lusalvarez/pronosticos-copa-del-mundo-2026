@@ -861,13 +861,18 @@ startBtn.addEventListener("click", async () => {
         const existingData = snapshot.val();
         const storedPasswordHash = existingData.passwordHash;
         const storedLegacyPassword = existingData.password;
-        const matchedLegacyPassword = storedPasswordHash
-          ? findLegacyPasswordMatch(password, storedPasswordHash)
-          : null;
-        const passwordMatches =
-          storedPasswordHash === inputPasswordHash ||
-          storedLegacyPassword === password ||
-          matchedLegacyPassword !== null;
+        
+        let passwordMatches = false;
+        
+        // Si passwordHash existe, on ne vérifie QUE le hash (pas de legacy)
+        if (storedPasswordHash) {
+          passwordMatches = (storedPasswordHash === inputPasswordHash);
+        }
+        // Sinon, on vérifie l'ancien format (password en clair ou legacy)
+        else if (storedLegacyPassword) {
+          const matchedLegacyPassword = findLegacyPasswordMatch(password, storedLegacyPassword);
+          passwordMatches = (storedLegacyPassword === password || matchedLegacyPassword !== null);
+        }
         
         if (!passwordMatches) {
           alert("❌ Contraseña incorrecta para este participante.\n\nSi olvidaste tu contraseña, contacta al administrador.");
