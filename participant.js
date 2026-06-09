@@ -435,6 +435,7 @@ const mainView = document.getElementById("main-view");
 const participantNameInput = document.getElementById("participant-name-input");
 const participantPasswordInput = document.getElementById("participant-password-input");
 const startBtn = document.getElementById("start-btn");
+const forgotPasswordBtn = document.getElementById("forgot-password-btn");
 const participantNameDisplay = document.getElementById("participant-name-display");
 const matchesList = document.getElementById("matches-list");
 const saveBtn = document.getElementById("save-btn");
@@ -1022,6 +1023,26 @@ startBtn.disabled = true;
 startBtn.style.opacity = "0.5";
 
 // Charger les matchs automatiquement au démarrage depuis matches-data.js
+// Gérer le bouton "¿Olvidaste tu contraseña?"
+forgotPasswordBtn.addEventListener("click", () => {
+  const name = participantNameInput.value.trim();
+  
+  if (!name) {
+    alert("⚠️ Por favor ingresa tu nombre primero para que podamos ayudarte a recuperar tu contraseña.");
+    participantNameInput.focus();
+    return;
+  }
+  
+  const message = `🔑 Recuperación de contraseña\n\n` +
+    `Para recuperar tu contraseña, contacta al administrador:\n\n` +
+    `📧 Email: [email del administrador]\n` +
+    `💬 WhatsApp: [número del administrador]\n\n` +
+    `Proporciona tu nombre: "${name}"\n\n` +
+    `El administrador podrá restablecer tu contraseña.`;
+  
+  alert(message);
+});
+
 loadMatchesFromSharedData();
 
 // Démarrer l'écoute des nouveaux matchs depuis Firebase
