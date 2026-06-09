@@ -24,7 +24,15 @@ function normalizeParticipantId(name) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, "-");
+    .replace(/\s+/g, "-")
+    // Remplacer les caractères interdits par Firebase (. $ # [ ] / @)
+    .replace(/\./g, "_dot_")
+    .replace(/\$/g, "_dollar_")
+    .replace(/#/g, "_hash_")
+    .replace(/\[/g, "_lbracket_")
+    .replace(/\]/g, "_rbracket_")
+    .replace(/\//g, "_slash_")
+    .replace(/@/g, "_at_");
 }
 
 function findLegacyPasswordMatch(rawPassword, passwordHash) {
@@ -923,21 +931,76 @@ startBtn.addEventListener("click", async () => {
         return;
       } else {
         // Le participant n'existe PAS dans Firebase
-        // Nettoyer le localStorage pour éviter de charger d'anciennes données
-        console.log("🧹 Participante no encontrado en Firebase. Limpiando localStorage...");
-        localStorage.removeItem(PARTICIPANT_STORAGE_KEY);
-        localStorage.removeItem(SENT_PREDICTIONS_KEY);
+        // Essayer de charger depuis localStorage si disponible
+        console.log("ℹ️ Participante no encontrado en Firebase. Verificando localStorage...");
+        const savedData = localStorage.getItem(PARTICIPANT_STORAGE_KEY);
+        
+        if (savedData) {
+          try {
+            const parsed = JSON.parse(savedData);
+            // Vérifier que c'est bien le même participant et mot de passe
+            if (parsed.participantName === name && parsed.participantPassword === inputPasswordHash) {
+              console.log("✅ Datos locales encontrados para este participante");
+              participantName = name;
+              participantPassword = inputPasswordHash;
+              predictions = parsed.predictions || {};
+              
+              // Charger les compteurs de pronostics envoyés
+              loadSentPredictions();
+              
+              // Initialiser les prédictions manquantes
+              matches.forEach((match, index) => {
+                if (!predictions[index]) {
+                  predictions[index] = { home: "", away: "", firstGoal: "" };
+                }
+              });
+              
+              saveData();
+              showMainView();
+              return;
+            } else {
+              console.log("⚠️ Datos locales no coinciden con este participante");
+            }
+          } catch (e) {
+            console.error("❌ Error al parsear localStorage:", e);
+          }
+        }
       }
     } catch (error) {
       console.warn("⚠️ Firebase no disponible, usando modo local:", error.message);
+      
+      // Si Firebase n'est pas disponible, essayer de charger depuis localStorage
+      const savedData = localStorage.getItem(PARTICIPANT_STORAGE_KEY);
+      if (savedData) {
+        try {
+          const parsed = JSON.parse(savedData);
+          if (parsed.participantName === name && parsed.participantPassword === inputPasswordHash) {
+            console.log("✅ Cargando datos desde localStorage (Firebase no disponible)");
+            participantName = name;
+            participantPassword = inputPasswordHash;
+            predictions = parsed.predictions || {};
+            
+            loadSentPredictions();
+            
+            matches.forEach((match, index) => {
+              if (!predictions[index]) {
+                predictions[index] = { home: "", away: "", firstGoal: "" };
+              }
+            });
+            
+            saveData();
+            showMainView();
+            return;
+          }
+        } catch (e) {
+          console.error("❌ Error al parsear localStorage:", e);
+        }
+      }
     }
   }
 
   // Nouveau participant (ni en local, ni dans Firebase)
-  // Nettoyer complètement le localStorage pour éviter les données résiduelles
-  localStorage.removeItem(PARTICIPANT_STORAGE_KEY);
-  localStorage.removeItem(SENT_PREDICTIONS_KEY);
-  console.log("🧹 LocalStorage limpiado para nuevo participante");
+  console.log("✨ Creando nuevo participante");
   
   participantName = name;
   participantPassword = inputPasswordHash;
@@ -946,10 +1009,10 @@ startBtn.addEventListener("click", async () => {
   predictions = {};
   sentPredictions = {}; // Nouveau participant = pas de pronostics envoyés
   matches.forEach((match, index) => {
-    predictions[index] = { home: "", away: "" };
+    predictions[index] = { home: "", away: "", firstGoal: "" };
   });
 
-  console.log("✨ Nuevo participante creado");
+  console.log("✅ Nuevo participante creado");
   saveData();
   showMainView();
 });
