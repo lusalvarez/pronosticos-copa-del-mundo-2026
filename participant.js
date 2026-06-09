@@ -1681,6 +1681,20 @@ if (changePasswordBtn) {
       // Sauvegarder dans Firebase
       await participantRef.set(updatedData);
       
+      // Nettoyer le localStorage pour ce participant pour forcer la resynchronisation
+      const savedData = localStorage.getItem(PARTICIPANT_STORAGE_KEY);
+      if (savedData) {
+        try {
+          const parsed = JSON.parse(savedData);
+          if (parsed.participantName === name.trim()) {
+            localStorage.removeItem(PARTICIPANT_STORAGE_KEY);
+            console.log("🧹 localStorage limpiado para forzar resincronización con nuevo password");
+          }
+        } catch (e) {
+          console.error("Error al limpiar localStorage:", e);
+        }
+      }
+      
       alert("✅ ¡Contraseña cambiada con éxito!\n\nRecuerda usar tu nueva contraseña la próxima vez que inicies sesión.");
       
     } catch (error) {
