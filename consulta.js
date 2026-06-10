@@ -125,22 +125,13 @@ function isDayLocked(dayMatches) {
   });
   
   const firstMatchDate = new Date(firstMatch.date);
-  
-  // IMPORTANT: Utiliser l'heure UTC pour que tous les participants (France et Colombie)
-  // voient le même état de freeze au même moment absolu
   const now = new Date();
-  const nowUTC = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    now.getUTCHours(),
-    now.getUTCMinutes(),
-    now.getUTCSeconds()
-  );
   
+  // Calculer la deadline (24h avant le match)
   const deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
   
-  return nowUTC >= deadline.getTime();
+  // Comparer les timestamps (millisecondes depuis 1970) - universel pour tous les fuseaux horaires
+  return now.getTime() >= deadline.getTime();
 }
 
 function toNumber(value) {
