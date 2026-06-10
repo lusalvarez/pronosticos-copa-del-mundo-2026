@@ -1153,7 +1153,8 @@ function groupMatchesByDay() {
         matches: dayMatches,
         stage: dayDef.stage,
         date: dayMatches[0].date,
-        isWorldCup: true
+        isWorldCup: true,
+        isManual: false  // Explicitly mark World Cup matches as not manual
       });
       currentIndex += dayDef.count;
     }
