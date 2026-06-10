@@ -1179,38 +1179,9 @@ function groupMatchesByDay() {
 // Vérifier si une journée est verrouillée (24h avant le premier match)
 // Timestamps de freeze en UTC (millisecondes depuis 1970) - identiques pour tous les fuseaux horaires
 const FREEZE_TIMESTAMPS = {
-  day1: 1749578400000,   // 10 juin 2026 19:00 UTC (21h France)
-  day2: 1749664800000,   // 11 juin 2026 16:00 UTC (18h France)
-  day3: 1749751200000,   // 12 juin 2026 16:00 UTC (18h France)
-  day4: 1749826800000,   // 13 juin 2026 13:00 UTC (15h France)
-  day5: 1749913200000,   // 14 juin 2026 13:00 UTC (15h France)
-  day6: 1749999600000,   // 15 juin 2026 13:00 UTC (15h France)
-  day7: 1750086000000,   // 16 juin 2026 13:00 UTC (15h France)
-  day8: 1750172400000,   // 17 juin 2026 13:00 UTC (15h France)
-  day9: 1750258800000,   // 18 juin 2026 13:00 UTC (15h France)
-  day10: 1750345200000,  // 19 juin 2026 13:00 UTC (15h France)
-  day11: 1750431600000,  // 20 juin 2026 13:00 UTC (15h France)
-  day12: 1750518000000,  // 21 juin 2026 13:00 UTC (15h France)
-  day13: 1750604400000,  // 22 juin 2026 13:00 UTC (15h France)
-  day14: 1750690800000,  // 23 juin 2026 13:00 UTC (15h France)
-  day15: 1750777200000,  // 24 juin 2026 13:00 UTC (15h France)
-  day16: 1750863600000,  // 25 juin 2026 13:00 UTC (15h France)
-  day17: 1750950000000,  // 26 juin 2026 13:00 UTC (15h France)
-  day18: 1751036400000,  // 27 juin 2026 13:00 UTC (15h France)
-  day19: 1751122800000,  // 28 juin 2026 13:00 UTC (15h France)
-  day20: 1751209200000,  // 29 juin 2026 13:00 UTC (15h France)
-  day21: 1751295600000,  // 30 juin 2026 13:00 UTC (15h France)
-  day22: 1751382000000,  // 1 juillet 2026 13:00 UTC (15h France)
-  day23: 1751468400000,  // 2 juillet 2026 13:00 UTC (15h France)
-  day24: 1751554800000,  // 3 juillet 2026 13:00 UTC (15h France)
-  day25: 1751641200000,  // 4 juillet 2026 13:00 UTC (15h France)
-  day26: 1751727600000,  // 5 juillet 2026 13:00 UTC (15h France)
-  day27: 1752073200000,  // 9 juillet 2026 13:00 UTC (15h France)
-  day28: 1752159600000,  // 10 juillet 2026 13:00 UTC (15h France)
-  day29: 1752419600000,  // 13 juillet 2026 13:00 UTC (15h France)
-  day30: 1752506000000,  // 14 juillet 2026 13:00 UTC (15h France)
-  day31: 1752765600000,  // 17 juillet 2026 13:00 UTC (15h France)
-  day32: 1752865200000   // 18 juillet 2026 19:00 UTC (21h France) - 24h avant finale
+  day1: 1749578400000,   // 10 juin 2026 21:00 (France) - 24h avant match du 11 juin 21:00
+  day2: 1750179600000,   // 17 juin 2026 18:00 (France) - 24h avant match du 18 juin 18:00
+  day3: 1750701600000    // 23 juin 2026 21:00 (France) - 24h avant match du 24 juin 21:00
 };
 
 function isDayLocked(dayMatches) {
