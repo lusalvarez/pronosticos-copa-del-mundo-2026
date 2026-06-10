@@ -1218,7 +1218,7 @@ function generateWhatsAppSummary(dayIndex = 0) {
   ranking.forEach((participant, index) => {
     const medals = ["🥇", "🥈", "🥉"];
     const medal = index < 3 ? medals[index] : `${index + 1}.`;
-    text += `${medal} ${participant.name}: ${participant.totalPoints}pts\n`;
+    text += `${medal} ${participant.name}: ${participant.totalPoints}pts (🎯${participant.correctFirstGoals})\n`;
   });
   
   text += "\n⚽ *PARTIDOS*\n";
