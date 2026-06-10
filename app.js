@@ -533,8 +533,8 @@ function groupMatchesByDay(matches) {
   return dayGroups;
 }
 
-// Vérifier si une journée est verrouillée (24h avant le premier match)
-function isDayLocked(dayMatches) {
+// Vérifier si une journée est verrouillée (24h avant le premier match + décalage éventuel)
+function isDayLocked(dayMatches, dayIndex = null) {
   if (!dayMatches || dayMatches.length === 0) return false;
   
   // Trouver le premier match de la journée
@@ -546,12 +546,38 @@ function isDayLocked(dayMatches) {
   
   const firstMatchDate = new Date(firstMatch.date);
   const now = new Date();
-  const deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000)); // 24h avant
+  
+  // Deadline de base: 24h avant le premier match
+  let deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
+  
+  // Appliquer le décalage si disponible (chargé de manière synchrone depuis le cache)
+  if (dayIndex !== null && window.freezeDelaysCache && window.freezeDelaysCache[`day${dayIndex}`]) {
+    const delayHours = window.freezeDelaysCache[`day${dayIndex}`].hours || 0;
+    deadline = new Date(deadline.getTime() + (delayHours * 60 * 60 * 1000));
+  }
   
   return now >= deadline;
 }
 
-// Décaler l'heure de freeze d'une journée
+// Charger les décalages de freeze depuis Firebase (appelé au démarrage)
+async function loadFreezeDelays() {
+  try {
+    if (typeof firebase !== 'undefined' && firebase.database) {
+      const delaysSnapshot = await database.ref('freezeDelays').once('value');
+      if (delaysSnapshot.exists()) {
+        window.freezeDelaysCache = delaysSnapshot.val();
+        console.log('✅ Décalages de freeze chargés:', window.freezeDelaysCache);
+      } else {
+        window.freezeDelaysCache = {};
+      }
+    }
+  } catch (error) {
+    console.error('❌ Erreur chargement décalages freeze:', error);
+    window.freezeDelaysCache = {};
+  }
+}
+
+// Décaler l'heure de freeze d'une journée (sans modifier les dates des matchs)
 async function delayFreeze(dayIndex) {
   const dayGroups = groupMatchesByDay(state.matches);
   
@@ -564,74 +590,83 @@ async function delayFreeze(dayIndex) {
   const dayName = dayGroup.name || `JORNADA ${dayIndex + 1}`;
   
   // Vérifier si la journée est déjà freezée
-  if (isDayLocked(dayGroup.matches)) {
+  if (isDayLocked(dayGroup.matches, dayIndex)) {
     alert(`❌ La ${dayName} est déjà freezée.\n\nImpossible de décaler le freeze après l'heure limite.`);
     return;
   }
   
-  // Demander le nombre d'heures de décalage
+  // Récupérer le décalage actuel depuis Firebase
+  let currentDelayHours = 0;
+  try {
+    if (typeof firebase !== 'undefined' && firebase.database) {
+      const delaySnapshot = await database.ref(`freezeDelays/day${dayIndex}`).once('value');
+      if (delaySnapshot.exists()) {
+        currentDelayHours = delaySnapshot.val().hours || 0;
+      }
+    }
+  } catch (error) {
+    console.error("Erreur lecture décalage:", error);
+  }
+  
+  // Demander le nombre d'heures de décalage SUPPLÉMENTAIRE
   const hoursInput = prompt(
     `⏰ Décaler le freeze de la ${dayName}\n\n` +
-    `Entrez le nombre d'heures à ajouter au délai actuel (24h avant le premier match):\n\n` +
+    `Décalage actuel: ${currentDelayHours > 0 ? '+' : ''}${currentDelayHours}h\n\n` +
+    `Entrez le nombre d'heures SUPPLÉMENTAIRES à ajouter:\n\n` +
     `Exemples:\n` +
-    `• 1 = décaler de 1 heure (freeze à 23h au lieu de 24h avant)\n` +
-    `• 2 = décaler de 2 heures (freeze à 22h au lieu de 24h avant)\n` +
-    `• -1 = avancer de 1 heure (freeze à 25h au lieu de 24h avant)`,
+    `• 1 = ajouter 1 heure de plus\n` +
+    `• 2 = ajouter 2 heures de plus\n` +
+    `• -1 = retirer 1 heure`,
     "1"
   );
   
   if (hoursInput === null) return; // Annulé
   
-  const hours = parseFloat(hoursInput);
-  if (isNaN(hours)) {
+  const additionalHours = parseFloat(hoursInput);
+  if (isNaN(additionalHours)) {
     alert("❌ Nombre d'heures invalide");
     return;
   }
   
+  const newTotalDelayHours = currentDelayHours + additionalHours;
+  
   // Confirmer l'action
   const firstMatchDate = new Date(dayGroup.matches[0].date);
-  const currentDeadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
-  const newDeadline = new Date(currentDeadline.getTime() + (hours * 60 * 60 * 1000));
+  const baseDeadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
+  const currentDeadline = new Date(baseDeadline.getTime() + (currentDelayHours * 60 * 60 * 1000));
+  const newDeadline = new Date(baseDeadline.getTime() + (newTotalDelayHours * 60 * 60 * 1000));
   
   const confirm = window.confirm(
     `⏰ Confirmer le décalage du freeze?\n\n` +
     `Journée: ${dayName}\n` +
-    `Premier match: ${formatDate(firstMatchDate.toISOString())}\n\n` +
+    `Premier match: ${formatDate(firstMatchDate.toISOString())} (INCHANGÉ)\n\n` +
     `Deadline actuelle: ${formatDate(currentDeadline.toISOString())}\n` +
     `Nouvelle deadline: ${formatDate(newDeadline.toISOString())}\n\n` +
-    `Décalage: ${hours > 0 ? '+' : ''}${hours} heure(s)`
+    `Décalage total: ${newTotalDelayHours > 0 ? '+' : ''}${newTotalDelayHours}h par rapport aux 24h standard`
   );
   
   if (!confirm) return;
   
   try {
-    // Décaler la date de tous les matchs de la journée
-    for (const match of dayGroup.matches) {
-      const matchIndex = state.matches.findIndex(m => m.id === match.id);
-      if (matchIndex === -1) continue;
-      
-      const currentDate = new Date(state.matches[matchIndex].date);
-      const newDate = new Date(currentDate.getTime() + (hours * 60 * 60 * 1000));
-      
-      state.matches[matchIndex].date = newDate.toISOString();
-      
-      // Mettre à jour dans Firebase
-      if (typeof firebase !== 'undefined' && firebase.database) {
-        await database.ref(`matches/${matchIndex}`).update({
-          date: newDate.toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-      }
+    // Sauvegarder le décalage dans Firebase (PAS les dates des matchs!)
+    if (typeof firebase !== 'undefined' && firebase.database) {
+      await database.ref(`freezeDelays/day${dayIndex}`).set({
+        hours: newTotalDelayHours,
+        dayName: dayName,
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'admin'
+      });
     }
     
-    // Sauvegarder localement
-    saveAndRender();
+    // Recharger l'affichage
+    renderAdminMatches();
     
     alert(
       `✅ Freeze décalé avec succès!\n\n` +
       `${dayName}\n` +
       `Nouvelle deadline: ${formatDate(newDeadline.toISOString())}\n\n` +
-      `Les participants ont maintenant jusqu'à cette nouvelle date pour envoyer leurs pronostics.`
+      `⚠️ IMPORTANT: Les dates des matchs n'ont PAS changé.\n` +
+      `Seul le délai de freeze a été ajusté de ${newTotalDelayHours > 0 ? '+' : ''}${newTotalDelayHours}h.`
     );
     
   } catch (error) {
@@ -975,7 +1010,7 @@ function renderAdminMatches() {
   
   dayGroups.forEach((dayGroup, dayIndex) => {
     const dayName = dayGroup.name || `JORNADA ${dayIndex + 1}`;
-    const isLocked = isDayLocked(dayGroup.matches);
+    const isLocked = isDayLocked(dayGroup.matches, dayIndex);
     const firstMatchDate = new Date(dayGroup.matches[0].date);
     const deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
     
@@ -1453,7 +1488,7 @@ function renderPublicMatches() {
   dayGroups.forEach((dayGroup, dayIndex) => {
     const dayName = dayGroup.name || `JORNADA ${dayIndex + 1}`;
     const dayNumber = dayIndex + 1;
-    const isLocked = isDayLocked(dayGroup.matches);
+    const isLocked = isDayLocked(dayGroup.matches, dayIndex);
     const firstMatchDate = new Date(dayGroup.matches[0].date);
     const deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
     
@@ -1753,6 +1788,9 @@ function listenToFirebaseUpdates() {
 }
 
 render();
+
+// Charger les décalages de freeze depuis Firebase
+loadFreezeDelays();
 
 // Démarrer l'écoute Firebase après le premier rendu
 listenToFirebaseUpdates();
