@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic Complet</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #2d2d30;
+            border-radius: 5px;
+        }
+        .error { color: #f48771; }
+        .success { color: #4ec9b0; }
+        .warning { color: #dcdcaa; }
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #1177bb; }
+        pre {
+            background: #1e1e1e;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Diagnostic Complet</h1>
+    
+    <div class="section">
+        <h2>1. Test Timestamps Freeze</h2>
+        <button onclick="testFreeze()">Tester Freeze</button>
+        <div id="freeze-result"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. Test Connexion Firebase</h2>
+        <button onclick="testFirebase()">Tester Firebase</button>
+        <div id="firebase-result"></div>
+    </div>
+
+    <div class="section">
+        <h2>3. Vérifier Pronostics Participant</h2>
+        <input type="text" id="participant-name" placeholder="Nom du participant" style="padding: 8px; width: 200px;">
+        <button onclick="checkPredictions()">Vérifier</button>
+        <div id="predictions-result"></div>
+    </div>
+
+    <div class="section">
+        <h2>4. Cache & Version</h2>
+        <button onclick="checkCache()">Vérifier Cache</button>
+        <button onclick="clearAllCache()">Vider Tout</button>
+        <div id="cache-result"></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDwQ1PZbkILGUGDpLA_TpxbWyylm-_MZ-k",
+            authDomain: "pronosticos-copa-del-mundo.firebaseapp.com",
+            databaseURL: "https://pronosticos-copa-del-mundo-default-rtdb.firebaseio.com",
+            projectId: "pronosticos-copa-del-mundo",
+            storageBucket: "pronosticos-copa-del-mundo.firebasestorage.app",
+            messagingSenderId: "1069333430547",
+            appId: "1:1069333430547:web:e4c8e5e5e5e5e5e5e5e5e5"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        const FREEZE_TIMESTAMPS = {
+          day1: 1781118000000,
+          day2: 1781712000000,
+          day3: 1782241200000
+        };
+
+        function testFreeze() {
+            const result = document.getElementById('freeze-result');
+            const now = Date.now();
+            const nowDate = new Date(now);
+            
+            let html = `<pre>`;
+            html += `Heure actuelle:\n`;
+            html += `  Timestamp: ${now}\n`;
+            html += `  UTC: ${nowDate.toISOString()}\n`;
+            html += `  France: ${nowDate.toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}\n`;
+            html += `  Colombie: ${nowDate.toLocaleString('es-CO', { timeZone: 'America/Bogota' })}\n\n`;
+            
+            Object.entries(FREEZE_TIMESTAMPS).forEach(([day, timestamp]) => {
+                const freezeDate = new Date(timestamp);
+                const isActive = now >= timestamp;
+                const diff = Math.abs(now - timestamp);
+                const diffHours = Math.floor(diff / (1000 * 60 * 60));
+                
+                html += `${day.toUpperCase()}:\n`;
+                html += `  Timestamp: ${timestamp}\n`;
+                html += `  Date France: ${freezeDate.toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}\n`;
+                html += `  Status: ${isActive ? '🔴 FREEZE ACTIF' : '🟢 Pas freezé'}\n`;
+                html += `  Différence: ${diffHours}h ${now >= timestamp ? '(passé)' : '(futur)'}\n\n`;
+            });
+            html += `</pre>`;
+            
+            result.innerHTML = html;
+        }
+
+        async function testFirebase() {
+            const result = document.getElementById('firebase-result');
+            result.innerHTML = '<p class="warning">⏳ Test en cours...</p>';
+            
+            try {
+                const snapshot = await database.ref('matches').limitToFirst(1).once('value');
+                const matches = snapshot.val();
+                
+                if (matches) {
+                    result.innerHTML = '<p class="success">✅ Connexion Firebase OK</p><pre>' + 
+                        JSON.stringify(matches, null, 2) + '</pre>';
+                } else {
+                    result.innerHTML = '<p class="error">❌ Aucun match trouvé dans Firebase</p>';
+                }
+            } catch (error) {
+                result.innerHTML = '<p class="error">❌ Erreur: ' + error.message + '</p>';
+            }
+        }
+
+        async function checkPredictions() {
+            const name = document.getElementById('participant-name').value.trim();
+            if (!name) {
+                alert('Entrez un nom de participant');
+                return;
+            }
+            
+            const result = document.getElementById('predictions-result');
+            result.innerHTML = '<p class="warning">⏳ Vérification...</p>';
+            
+            try {
+                const participantId = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                const snapshot = await database.ref(`participants/${participantId}`).once('value');
+                const data = snapshot.val();
+                
+                if (data) {
+                    const predCount = data.predictions ? data.predictions.length : 0;
+                    result.innerHTML = `<p class="success">✅ Participant trouvé</p><pre>` +
+                        `Nom: ${data.name}\n` +
+                        `Pronostics: ${predCount}\n` +
+                        `Données:\n${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    result.innerHTML = '<p class="error">❌ Participant non trouvé: ' + participantId + '</p>';
+                }
+            } catch (error) {
+                result.innerHTML = '<p class="error">❌ Erreur: ' + error.message + '</p>';
+            }
+        }
+
+        function checkCache() {
+            const result = document.getElementById('cache-result');
+            let html = '<pre>';
+            html += 'LocalStorage:\n';
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                html += `  ${key}: ${localStorage.getItem(key).substring(0, 50)}...\n`;
+            }
+            html += '</pre>';
+            result.innerHTML = html;
+        }
+
+        function clearAllCache() {
+            localStorage.clear();
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => caches.delete(name));
+                });
+            }
+            alert('✅ Cache vidé! Rechargez la page.');
+        }
+    </script>
+</body>
+</html>
