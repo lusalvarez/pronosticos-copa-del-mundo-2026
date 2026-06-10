@@ -1264,6 +1264,7 @@ function renderMatches() {
     
     // Pour les matchs manuels, ne pas appliquer le verrouillage par journée
     const isLocked = dayGroup.isManual ? false : isDayLocked(dayGroup.matches);
+    console.log(`🔒 isLocked for ${dayName}:`, isLocked, 'isManual:', dayGroup.isManual);
     
     if (!dayGroup.matches[0]) {
       console.error("❌ Error: No hay partidos en el grupo", dayGroup);
