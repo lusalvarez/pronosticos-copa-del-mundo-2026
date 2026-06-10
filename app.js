@@ -551,6 +551,95 @@ function isDayLocked(dayMatches) {
   return now >= deadline;
 }
 
+// Décaler l'heure de freeze d'une journée
+async function delayFreeze(dayIndex) {
+  const dayGroups = groupMatchesByDay(state.matches);
+  
+  if (dayIndex >= dayGroups.length) {
+    alert("❌ Journée invalide");
+    return;
+  }
+  
+  const dayGroup = dayGroups[dayIndex];
+  const dayName = dayGroup.name || `JORNADA ${dayIndex + 1}`;
+  
+  // Vérifier si la journée est déjà freezée
+  if (isDayLocked(dayGroup.matches)) {
+    alert(`❌ La ${dayName} est déjà freezée.\n\nImpossible de décaler le freeze après l'heure limite.`);
+    return;
+  }
+  
+  // Demander le nombre d'heures de décalage
+  const hoursInput = prompt(
+    `⏰ Décaler le freeze de la ${dayName}\n\n` +
+    `Entrez le nombre d'heures à ajouter au délai actuel (24h avant le premier match):\n\n` +
+    `Exemples:\n` +
+    `• 1 = décaler de 1 heure (freeze à 23h au lieu de 24h avant)\n` +
+    `• 2 = décaler de 2 heures (freeze à 22h au lieu de 24h avant)\n` +
+    `• -1 = avancer de 1 heure (freeze à 25h au lieu de 24h avant)`,
+    "1"
+  );
+  
+  if (hoursInput === null) return; // Annulé
+  
+  const hours = parseFloat(hoursInput);
+  if (isNaN(hours)) {
+    alert("❌ Nombre d'heures invalide");
+    return;
+  }
+  
+  // Confirmer l'action
+  const firstMatchDate = new Date(dayGroup.matches[0].date);
+  const currentDeadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
+  const newDeadline = new Date(currentDeadline.getTime() + (hours * 60 * 60 * 1000));
+  
+  const confirm = window.confirm(
+    `⏰ Confirmer le décalage du freeze?\n\n` +
+    `Journée: ${dayName}\n` +
+    `Premier match: ${formatDate(firstMatchDate.toISOString())}\n\n` +
+    `Deadline actuelle: ${formatDate(currentDeadline.toISOString())}\n` +
+    `Nouvelle deadline: ${formatDate(newDeadline.toISOString())}\n\n` +
+    `Décalage: ${hours > 0 ? '+' : ''}${hours} heure(s)`
+  );
+  
+  if (!confirm) return;
+  
+  try {
+    // Décaler la date de tous les matchs de la journée
+    for (const match of dayGroup.matches) {
+      const matchIndex = state.matches.findIndex(m => m.id === match.id);
+      if (matchIndex === -1) continue;
+      
+      const currentDate = new Date(state.matches[matchIndex].date);
+      const newDate = new Date(currentDate.getTime() + (hours * 60 * 60 * 1000));
+      
+      state.matches[matchIndex].date = newDate.toISOString();
+      
+      // Mettre à jour dans Firebase
+      if (typeof firebase !== 'undefined' && firebase.database) {
+        await database.ref(`matches/${matchIndex}`).update({
+          date: newDate.toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+      }
+    }
+    
+    // Sauvegarder localement
+    saveAndRender();
+    
+    alert(
+      `✅ Freeze décalé avec succès!\n\n` +
+      `${dayName}\n` +
+      `Nouvelle deadline: ${formatDate(newDeadline.toISOString())}\n\n` +
+      `Les participants ont maintenant jusqu'à cette nouvelle date pour envoyer leurs pronostics.`
+    );
+    
+  } catch (error) {
+    console.error("❌ Erreur lors du décalage du freeze:", error);
+    alert(`❌ Erreur lors du décalage du freeze:\n\n${error.message}`);
+  }
+}
+
 function toNumber(value) {
   return value === "" || value === null || value === undefined ? null : Number(value);
 }
@@ -932,6 +1021,26 @@ function renderAdminMatches() {
     `;
     whatsappBtn.addEventListener("click", () => copyWhatsAppSummary(dayIndex));
     dayHeader.appendChild(whatsappBtn);
+    
+    // Ajouter un bouton pour décaler le freeze (seulement si pas encore freezé)
+    if (!isLocked) {
+      const delayFreezeBtn = document.createElement("button");
+      delayFreezeBtn.textContent = "⏰ Décaler freeze";
+      delayFreezeBtn.style.cssText = `
+        margin-top: 1rem;
+        margin-left: 1rem;
+        padding: 0.75rem 1.5rem;
+        background: #f59e0b;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 0.95rem;
+      `;
+      delayFreezeBtn.addEventListener("click", () => delayFreeze(dayIndex));
+      dayHeader.appendChild(delayFreezeBtn);
+    }
     
     daySection.appendChild(dayHeader);
     
