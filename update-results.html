@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Actualizar Resultados - Copa del Mundo 2026</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .info-box {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+
+    .info-box h3 {
+      color: #1976d2;
+      margin-bottom: 10px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .filters {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .filters select, .filters input {
+      padding: 10px 15px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 1rem;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .filters button {
+      padding: 10px 20px;
+      background: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+
+    .filters button:hover {
+      background: #45a049;
+    }
+
+    .match-card {
+      background: white;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 15px;
+      transition: all 0.3s;
+    }
+
+    .match-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+
+    .match-card.completed {
+      background: #f1f8e9;
+      border-color: #8bc34a;
+    }
+
+    .match-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .match-info {
+      flex: 1;
+    }
+
+    .match-number {
+      font-weight: bold;
+      color: #667eea;
+      font-size: 1.1rem;
+    }
+
+    .match-date {
+      color: #666;
+      font-size: 0.9rem;
+      margin-top: 5px;
+    }
+
+    .match-stage {
+      background: #667eea;
+      color: white;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+
+    .teams-row {
+      display: grid;
+      grid-template-columns: 2fr auto 2fr;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .team {
+      text-align: center;
+    }
+
+    .team-name {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .vs {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #999;
+    }
+
+    .score-inputs {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .score-input {
+      width: 80px;
+      height: 60px;
+      font-size: 2rem;
+      text-align: center;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+
+    .score-input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .score-separator {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #999;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 15px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+
+    .btn-save {
+      background: #4caf50;
+      color: white;
+    }
+
+    .btn-save:hover {
+      background: #45a049;
+    }
+
+    .btn-clear {
+      background: #ff9800;
+      color: white;
+    }
+
+    .btn-clear:hover {
+      background: #f57c00;
+    }
+
+    .btn-calculate {
+      background: #2196f3;
+      color: white;
+      padding: 15px 30px;
+      font-size: 1.1rem;
+      margin-top: 20px;
+    }
+
+    .btn-calculate:hover {
+      background: #1976d2;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+
+    .status-completed {
+      background: #4caf50;
+      color: white;
+    }
+
+    .status-pending {
+      background: #ff9800;
+      color: white;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+
+    .loading-spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .success-message {
+      background: #4caf50;
+      color: white;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .error-message {
+      background: #f44336;
+      color: white;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .teams-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .vs {
+        display: none;
+      }
+
+      .score-inputs {
+        margin-top: 10px;
+      }
+
+      .match-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚽ Actualizar Resultados</h1>
+      <p>Copa del Mundo 2026 - Sistema de Pronósticos</p>
+    </div>
+
+    <div class="content">
+      <div class="info-box">
+        <h3>📊 Sistema de Puntos</h3>
+        <p><strong>Score exacto:</strong> 3 puntos | <strong>Resultado correcto:</strong> 1 punto | <strong>Resultado incorrecto:</strong> 0 puntos</p>
+      </div>
+
+      <div id="success-message" class="success-message"></div>
+      <div id="error-message" class="error-message"></div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="total-matches">0</div>
+          <div class="stat-label">Total de Partidos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="completed-matches">0</div>
+          <div class="stat-label">Partidos Completados</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="pending-matches">0</div>
+          <div class="stat-label">Partidos Pendientes</div>
+        </div>
+      </div>
+
+      <div class="filters">
+        <select id="stage-filter">
+          <option value="">Todas las fases</option>
+          <option value="Fase de grupos">Fase de grupos</option>
+          <option value="Dieciseisavos de final">Dieciseisavos de final</option>
+          <option value="Octavos de final">Octavos de final</option>
+          <option value="Cuartos de final">Cuartos de final</option>
+          <option value="Semifinales">Semifinales</option>
+          <option value="Finales">Finales</option>
+        </select>
+        <select id="status-filter">
+          <option value="">Todos los estados</option>
+          <option value="completed">Completados</option>
+          <option value="pending">Pendientes</option>
+        </select>
+        <input type="text" id="search-input" placeholder="Buscar equipo...">
+        <button onclick="applyFilters()">🔍 Filtrar</button>
+      </div>
+
+      <div id="loading" class="loading">
+        <div class="loading-spinner"></div>
+        <p>Cargando partidos desde Firebase...</p>
+      </div>
+
+      <div id="matches-container" style="display: none;"></div>
+
+      <div style="text-align: center; margin-top: 30px;">
+        <button class="btn btn-calculate" onclick="calculateAllPoints()">
+          🏆 Calcular Puntos de Todos los Participantes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script>
+    let matches = [];
+    let allMatches = [];
+    const db = firebase.database();
+
+    // Charger les matchs depuis Firebase
+    async function loadMatches() {
+      try {
+        const snapshot = await db.ref('matches').once('value');
+        if (snapshot.exists()) {
+          allMatches = snapshot.val();
+          matches = [...allMatches];
+          renderMatches();
+          updateStats();
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('matches-container').style.display = 'block';
+        } else {
+          showError('No se encontraron partidos en Firebase');
+        }
+      } catch (error) {
+        console.error('Error al cargar partidos:', error);
+        showError('Error al cargar los partidos: ' + error.message);
+      }
+    }
+
+    // Rendre les matchs
+    function renderMatches() {
+      const container = document.getElementById('matches-container');
+      container.innerHTML = '';
+
+      if (matches.length === 0) {
+        container.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">No se encontraron partidos con los filtros aplicados</p>';
+        return;
+      }
+
+      matches.forEach((match, index) => {
+        const isCompleted = match.homeScore !== undefined && match.awayScore !== undefined;
+        const card = document.createElement('div');
+        card.className = `match-card ${isCompleted ? 'completed' : ''}`;
+        card.innerHTML = `
+          <div class="match-header">
+            <div class="match-info">
+              <div class="match-number">Partido ${index + 1}</div>
+              <div class="match-date">${match.date || 'Fecha no definida'}</div>
+            </div>
+            <div>
+              <span class="match-stage">${match.stage || 'Fase no definida'}</span>
+              <span class="status-badge ${isCompleted ? 'status-completed' : 'status-pending'}">
+                ${isCompleted ? '✓ Completado' : '⏳ Pendiente'}
+              </span>
+            </div>
+          </div>
+          <div class="teams-row">
+            <div class="team">
+              <div class="team-name">${match.home}</div>
+            </div>
+            <div class="vs">VS</div>
+            <div class="team">
+              <div class="team-name">${match.away}</div>
+            </div>
+          </div>
+          <div class="score-inputs">
+            <input 
+              type="number" 
+              class="score-input" 
+              id="home-score-${index}" 
+              min="0" 
+              max="99"
+              value="${match.homeScore !== undefined ? match.homeScore : ''}"
+              placeholder="0"
+            >
+            <span class="score-separator">-</span>
+            <input 
+              type="number" 
+              class="score-input" 
+              id="away-score-${index}" 
+              min="0" 
+              max="99"
+              value="${match.awayScore !== undefined ? match.awayScore : ''}"
+              placeholder="0"
+            >
+          </div>
+          <div class="actions">
+            <button class="btn btn-clear" onclick="clearScore(${index})">🗑️ Limpiar</button>
+            <button class="btn btn-save" onclick="saveScore(${index})">💾 Guardar</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Sauvegarder le score d'un match
+    async function saveScore(index) {
+      const homeScore = document.getElementById(`home-score-${index}`).value;
+      const awayScore = document.getElementById(`away-score-${index}`).value;
+
+      if (homeScore === '' || awayScore === '') {
+        showError('Por favor ingresa ambos scores');
+        return;
+      }
+
+      const match = matches[index];
+      const originalIndex = allMatches.findIndex(m => 
+        m.home === match.home && m.away === match.away && m.date === match.date
+      );
+
+      try {
+        await db.ref(`matches/${originalIndex}`).update({
+          homeScore: parseInt(homeScore),
+          awayScore: parseInt(awayScore)
+        });
+
+        allMatches[originalIndex].homeScore = parseInt(homeScore);
+        allMatches[originalIndex].awayScore = parseInt(awayScore);
+        matches[index].homeScore = parseInt(homeScore);
+        matches[index].awayScore = parseInt(awayScore);
+
+        showSuccess(`✅ Score guardado: ${match.home} ${homeScore} - ${awayScore} ${match.away}`);
+        renderMatches();
+        updateStats();
+      } catch (error) {
+        console.error('Error al guardar score:', error);
+        showError('Error al guardar el score: ' + error.message);
+      }
+    }
+
+    // Effacer le score d'un match
+    async function clearScore(index) {
+      if (!confirm('¿Estás seguro de que deseas limpiar este score?')) {
+        return;
+      }
+
+      const match = matches[index];
+      const originalIndex = allMatches.findIndex(m => 
+        m.home === match.home && m.away === match.away && m.date === match.date
+      );
+
+      try {
+        await db.ref(`matches/${originalIndex}`).update({
+          homeScore: null,
+          awayScore: null
+        });
+
+        delete allMatches[originalIndex].homeScore;
+        delete allMatches[originalIndex].awayScore;
+        delete matches[index].homeScore;
+        delete matches[index].awayScore;
+
+        document.getElementById(`home-score-${index}`).value = '';
+        document.getElementById(`away-score-${index}`).value = '';
+
+        showSuccess('✅ Score limpiado correctamente');
+        renderMatches();
+        updateStats();
+      } catch (error) {
+        console.error('Error al limpiar score:', error);
+        showError('Error al limpiar el score: ' + error.message);
+      }
+    }
+
+    // Calculer les points de tous les participants
+    async function calculateAllPoints() {
+      if (!confirm('¿Calcular los puntos de todos los participantes basándose en los resultados actuales?')) {
+        return;
+      }
+
+      try {
+        const participantsSnapshot = await db.ref('participants').once('value');
+        if (!participantsSnapshot.exists()) {
+          showError('No se encontraron participantes');
+          return;
+        }
+
+        const participants = participantsSnapshot.val();
+        let updatedCount = 0;
+
+        for (const [participantId, participantData] of Object.entries(participants)) {
+          if (!participantData.predictions) continue;
+
+          let totalPoints = 0;
+
+          participantData.predictions.forEach((pred, matchIndex) => {
+            const match = allMatches[matchIndex];
+            if (!match || match.homeScore === undefined || match.awayScore === undefined) {
+              return; // Match pas encore joué
+            }
+
+            const prediction = pred.prediction;
+            if (!prediction || prediction.home === '' || prediction.away === '') {
+              return; // Pas de pronostic
+            }
+
+            const points = calculatePoints(
+              parseInt(prediction.home),
+              parseInt(prediction.away),
+              match.homeScore,
+              match.awayScore
+            );
+
+            totalPoints += points;
+          });
+
+          // Mettre à jour les points dans Firebase
+          await db.ref(`participants/${participantId}`).update({
+            points: totalPoints
+          });
+
+          updatedCount++;
+        }
+
+        showSuccess(`✅ Puntos calculados para ${updatedCount} participantes`);
+      } catch (error) {
+        console.error('Error al calcular puntos:', error);
+        showError('Error al calcular los puntos: ' + error.message);
+      }
+    }
+
+    // Calculer les points pour un pronostic
+    function calculatePoints(predHome, predAway, realHome, realAway) {
+      // Score exact = 3 points
+      if (predHome === realHome && predAway === realAway) {
+        return 3;
+      }
+
+      // Bon résultat = 1 point
+      const predResult = getResult(predHome, predAway);
+      const realResult = getResult(realHome, realAway);
+
+      if (predResult === realResult) {
+        return 1;
+      }
+
+      // Mauvais pronostic = 0 points
+      return 0;
+    }
+
+    // Obtenir le résultat (victoire/nul/défaite)
+    function getResult(home, away) {
+      if (home > away) return 'home';
+      if (home < away) return 'away';
+      return 'draw';
+    }
+
+    // Appliquer les filtres
+    function applyFilters() {
+      const stageFilter = document.getElementById('stage-filter').value;
+      const statusFilter = document.getElementById('status-filter').value;
+      const searchText = document.getElementById('search-input').value.toLowerCase();
+
+      matches = allMatches.filter(match => {
+        // Filtre par phase
+        if (stageFilter && match.stage !== stageFilter) {
+          return false;
+        }
+
+        // Filtre par statut
+        if (statusFilter === 'completed' && (match.homeScore === undefined || match.awayScore === undefined)) {
+          return false;
+        }
+        if (statusFilter === 'pending' && match.homeScore !== undefined && match.awayScore !== undefined) {
+          return false;
+        }
+
+        // Filtre par recherche
+        if (searchText && !match.home.toLowerCase().includes(searchText) && !match.away.toLowerCase().includes(searchText)) {
+          return false;
+        }
+
+        return true;
+      });
+
+      renderMatches();
+      updateStats();
+    }
+
+    // Mettre à jour les statistiques
+    function updateStats() {
+      const total = allMatches.length;
+      const completed = allMatches.filter(m => m.homeScore !== undefined && m.awayScore !== undefined).length;
+      const pending = total - completed;
+
+      document.getElementById('total-matches').textContent = total;
+      document.getElementById('completed-matches').textContent = completed;
+      document.getElementById('pending-matches').textContent = pending;
+    }
+
+    // Afficher un message de succès
+    function showSuccess(message) {
+      const el = document.getElementById('success-message');
+      el.textContent = message;
+      el.style.display = 'block';
+      setTimeout(() => {
+        el.style.display = 'none';
+      }, 5000);
+    }
+
+    // Afficher un message d'erreur
+    function showError(message) {
+      const el = document.getElementById('error-message');
+      el.textContent = message;
+      el.style.display = 'block';
+      setTimeout(() => {
+        el.style.display = 'none';
+      }, 5000);
+    }
+
+    // Charger les matchs au démarrage
+    loadMatches();
+  </script>
+</body>
+</html>
