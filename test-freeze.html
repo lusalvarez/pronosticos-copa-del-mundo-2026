@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Freeze</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+        .info { margin: 10px 0; padding: 10px; background: #2d2d30; border-left: 3px solid #4ec9b0; }
+        .active { border-left-color: #f48771; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Freeze Timestamps</h1>
+    <div id="output"></div>
+    
+    <script>
+        const FREEZE_TIMESTAMPS = {
+          day1: 1781118000000,   // 10 juin 2026 21:00 (France)
+          day2: 1781712000000,   // 17 juin 2026 18:00 (France)
+          day3: 1782241200000    // 23 juin 2026 21:00 (France)
+        };
+        
+        const now = Date.now();
+        const nowDate = new Date(now);
+        
+        let html = `<div class="info"><strong>Heure actuelle:</strong><br>`;
+        html += `Timestamp: ${now}<br>`;
+        html += `Date UTC: ${nowDate.toISOString()}<br>`;
+        html += `Date France: ${nowDate.toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}<br>`;
+        html += `Date Colombie: ${nowDate.toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</div>`;
+        
+        Object.entries(FREEZE_TIMESTAMPS).forEach(([day, timestamp]) => {
+            const freezeDate = new Date(timestamp);
+            const isActive = now >= timestamp;
+            const diff = Math.abs(now - timestamp);
+            const diffHours = Math.floor(diff / (1000 * 60 * 60));
+            const diffMins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            
+            html += `<div class="info ${isActive ? 'active' : ''}">`;
+            html += `<strong>${day.toUpperCase()}</strong><br>`;
+            html += `Timestamp: ${timestamp}<br>`;
+            html += `Date France: ${freezeDate.toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}<br>`;
+            html += `Date Colombie: ${freezeDate.toLocaleString('es-CO', { timeZone: 'America/Bogota' })}<br>`;
+            html += `<strong>Status: ${isActive ? '🔴 FREEZE ACTIF' : '🟢 Pas encore freezé'}</strong><br>`;
+            html += `Différence: ${diffHours}h ${diffMins}min ${now >= timestamp ? '(passé)' : '(futur)'}</div>`;
+        });
+        
+        document.getElementById('output').innerHTML = html;
+    </script>
+</body>
+</html>
