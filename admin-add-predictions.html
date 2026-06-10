@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Charger des pronósticos pour un participant</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2563eb;
+      margin-bottom: 10px;
+    }
+    .info {
+      background: #dbeafe;
+      border-left: 4px solid #2563eb;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .form-group {
+      margin: 20px 0;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #374151;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px 5px 10px 0;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    button.secondary {
+      background: #6b7280;
+    }
+    .matches-grid {
+      display: grid;
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .match-card {
+      background: #f9fafb;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+    }
+    .match-header {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #1f2937;
+    }
+    .match-inputs {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+    .match-inputs input {
+      width: 60px;
+      text-align: center;
+    }
+    .match-inputs select {
+      width: auto;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      display: none;
+    }
+    #status.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #10b981;
+    }
+    #status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #dc2626;
+    }
+    #status.info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #3b82f6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📝 Charger des pronósticos pour un participant</h1>
+    <p style="color: #6b7280;">Outil administrateur pour saisir les pronósticos d'un participant qui ne peut pas le faire lui-même</p>
+    
+    <div class="info">
+      <strong>📋 Procédure :</strong>
+      <ol style="margin: 10px 0; padding-left: 20px;">
+        <li>Entrez le nom et mot de passe du participant</li>
+        <li>Cliquez sur "Créer le compte et charger les matchs"</li>
+        <li>Saisissez les pronósticos pour chaque match</li>
+        <li>Cliquez sur "Envoyer tous les pronósticos"</li>
+        <li>Communiquez le nom et mot de passe au participant</li>
+      </ol>
+    </div>
+
+    <div class="form-group">
+      <label for="participantName">Nom du participant :</label>
+      <input type="text" id="participantName" placeholder="Ex: Roberto" />
+    </div>
+
+    <div class="form-group">
+      <label for="participantPassword">Mot de passe :</label>
+      <input type="text" id="participantPassword" placeholder="Ex: 1234" />
+    </div>
+
+    <div style="margin-top: 20px;">
+      <button onclick="createAccountAndLoadMatches()">1️⃣ Créer le compte et charger les matchs</button>
+    </div>
+
+    <div id="matchesSection" style="display: none; margin-top: 30px;">
+      <h2>Pronósticos à saisir</h2>
+      <div id="matchesList" class="matches-grid"></div>
+      
+      <div style="margin-top: 30px;">
+        <button onclick="sendAllPredictions()">2️⃣ Envoyer tous les pronósticos</button>
+        <button class="secondary" onclick="window.location.href='index.html'">↩️ Retour à l'admin</button>
+      </div>
+    </div>
+
+    <div id="status"></div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+
+  <script>
+    let participantName = "";
+    let participantPassword = "";
+    let matches = [];
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = type;
+      status.style.display = 'block';
+    }
+
+    function normalizeParticipantId(name) {
+      return name
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/\./g, "_dot_")
+        .replace(/\$/g, "_dollar_")
+        .replace(/#/g, "_hash_")
+        .replace(/\[/g, "_lbracket_")
+        .replace(/\]/g, "_rbracket_")
+        .replace(/\//g, "_slash_")
+        .replace(/@/g, "_at_");
+    }
+
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    async function createAccountAndLoadMatches() {
+      participantName = document.getElementById('participantName').value.trim();
+      participantPassword = document.getElementById('participantPassword').value.trim();
+
+      if (!participantName) {
+        showStatus('❌ Veuillez entrer un nom', 'error');
+        return;
+      }
+
+      if (!participantPassword) {
+        showStatus('❌ Veuillez entrer un mot de passe', 'error');
+        return;
+      }
+
+      showStatus('🔄 Création du compte et chargement des matchs...', 'info');
+
+      try {
+        if (typeof firebase === 'undefined' || !firebase.database) {
+          showStatus('❌ Firebase no está disponible', 'error');
+          return;
+        }
+
+        const db = firebase.database();
+        const participantId = normalizeParticipantId(participantName);
+
+        // Créer le mot de passe
+        await db.ref(`passwords/${participantName}`).set({
+          name: participantName,
+          password: participantPassword,
+          createdAt: new Date().toISOString(),
+          createdBy: 'admin-tool'
+        });
+
+        // Charger les matchs
+        const matchesSnapshot = await db.ref('matches').once('value');
+        const firebaseMatches = matchesSnapshot.val();
+
+        if (!firebaseMatches) {
+          showStatus('❌ Aucun match trouvé dans Firebase', 'error');
+          return;
+        }
+
+        matches = Object.entries(firebaseMatches)
+          .map(([id, data]) => ({ id, ...data }))
+          .filter(m => !m.addedManually) // Seulement les matchs de la Coupe du Monde
+          .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Afficher les matchs
+        renderMatches();
+
+        showStatus(
+          `✅ Compte créé !\n\n` +
+          `Nom: ${participantName}\n` +
+          `Mot de passe: ${participantPassword}\n` +
+          `${matches.length} matchs chargés\n\n` +
+          `Saisissez maintenant les pronósticos ci-dessous.`,
+          'success'
+        );
+
+        document.getElementById('matchesSection').style.display = 'block';
+
+      } catch (error) {
+        console.error('Error:', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    function renderMatches() {
+      const matchesList = document.getElementById('matchesList');
+      matchesList.innerHTML = '';
+
+      matches.forEach((match, index) => {
+        const card = document.createElement('div');
+        card.className = 'match-card';
+        card.innerHTML = `
+          <div class="match-header">
+            ${match.homeTeam} vs ${match.awayTeam}
+            <br><small style="color: #6b7280;">${formatDate(match.date)}</small>
+          </div>
+          <div class="match-inputs">
+            <input type="number" id="home-${index}" min="0" max="20" placeholder="0" />
+            <span>-</span>
+            <input type="number" id="away-${index}" min="0" max="20" placeholder="0" />
+            <select id="firstGoal-${index}">
+              <option value="">Primer gol</option>
+              <option value="${match.homeTeam}">${match.homeTeam}</option>
+              <option value="${match.awayTeam}">${match.awayTeam}</option>
+            </select>
+          </div>
+        `;
+        matchesList.appendChild(card);
+      });
+    }
+
+    async function sendAllPredictions() {
+      if (!participantName || !participantPassword) {
+        showStatus('❌ Veuillez d\'abord créer le compte', 'error');
+        return;
+      }
+
+      showStatus('🔄 Envoi des pronósticos...', 'info');
+
+      try {
+        const db = firebase.database();
+        const participantId = normalizeParticipantId(participantName);
+
+        // Collecter tous les pronósticos
+        const predictions = {};
+        let count = 0;
+
+        matches.forEach((match, index) => {
+          const home = document.getElementById(`home-${index}`).value;
+          const away = document.getElementById(`away-${index}`).value;
+          const firstGoal = document.getElementById(`firstGoal-${index}`).value;
+
+          if (home !== '' && away !== '') {
+            predictions[match.id] = {
+              home: parseInt(home),
+              away: parseInt(away),
+              firstGoalTeam: firstGoal || null
+            };
+            count++;
+          }
+        });
+
+        if (count === 0) {
+          showStatus('❌ Aucun pronóstico saisi', 'error');
+          return;
+        }
+
+        // Créer le participant dans Firebase
+        await db.ref(`participants/${participantId}`).set({
+          name: participantName,
+          predictions: predictions
+        });
+
+        showStatus(
+          `✅ ${count} pronósticos envoyés avec succès !\n\n` +
+          `Le participant peut maintenant se connecter avec :\n` +
+          `Nom: ${participantName}\n` +
+          `Mot de passe: ${participantPassword}\n\n` +
+          `Il pourra voir ses pronósticos et faire les jornadas suivantes.`,
+          'success'
+        );
+
+      } catch (error) {
+        console.error('Error:', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+  </script>
+</body>
+</html>
