@@ -1179,9 +1179,9 @@ function groupMatchesByDay() {
 // Vérifier si une journée est verrouillée (24h avant le premier match)
 // Timestamps de freeze en UTC (millisecondes depuis 1970) - identiques pour tous les fuseaux horaires
 const FREEZE_TIMESTAMPS = {
-  day1: 1749578400000,   // 10 juin 2026 21:00 (France) - 24h avant match du 11 juin 21:00
-  day2: 1750179600000,   // 17 juin 2026 18:00 (France) - 24h avant match du 18 juin 18:00
-  day3: 1750701600000    // 23 juin 2026 21:00 (France) - 24h avant match du 24 juin 21:00
+  day1: 1781118000000,   // 10 juin 2026 21:00 (France) - 24h avant match du 11 juin 21:00
+  day2: 1781712000000,   // 17 juin 2026 18:00 (France) - 24h avant match du 18 juin 18:00
+  day3: 1782241200000    // 23 juin 2026 21:00 (France) - 24h avant match du 24 juin 21:00
 };
 
 function isDayLocked(dayMatches) {
