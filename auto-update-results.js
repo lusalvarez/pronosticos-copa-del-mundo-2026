@@ -78,7 +78,15 @@ async function autoUpdateResults() {
     }
     
     // Recharger l'affichage
-    loadMatches();
+    if (typeof renderAdminMatches === 'function') {
+      renderAdminMatches();
+    }
+    if (typeof renderPublicMatches === 'function') {
+      renderPublicMatches();
+    }
+    if (typeof renderRanking === 'function') {
+      renderRanking();
+    }
     
   } catch (error) {
     hideLoadingMessage();
