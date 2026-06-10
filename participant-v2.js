@@ -1193,13 +1193,22 @@ function isDayLocked(dayMatches) {
   const dayNumber = firstMatch.day;
   const dayKey = `day${dayNumber}`;
   
+  console.log(`🔍 isDayLocked debug - dayNumber: ${dayNumber}, dayKey: ${dayKey}, firstMatch:`, firstMatch);
+  
   // Récupérer le timestamp de freeze pour cette journée
   const freezeTimestamp = FREEZE_TIMESTAMPS[dayKey];
-  if (!freezeTimestamp) return false;
+  console.log(`🔍 freezeTimestamp for ${dayKey}:`, freezeTimestamp);
+  
+  if (!freezeTimestamp) {
+    console.log(`⚠️ No freeze timestamp found for ${dayKey}`);
+    return false;
+  }
   
   // Comparer avec l'heure actuelle (en millisecondes UTC)
   const now = Date.now();
-  return now >= freezeTimestamp;
+  const isLocked = now >= freezeTimestamp;
+  console.log(`🔍 Comparison - now: ${now}, freeze: ${freezeTimestamp}, isLocked: ${isLocked}`);
+  return isLocked;
 }
 
 // Rendre les matchs groupés par journée
