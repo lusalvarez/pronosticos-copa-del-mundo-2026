@@ -1193,7 +1193,7 @@ function renderRanking() {
   `;
 }
 
-// Générer un récapitulatif WhatsApp pour une journée
+// Générer un récapitulatif WhatsApp pour une journée (optimisé mobile)
 function generateWhatsAppSummary(dayIndex = 0) {
   console.log("🔍 generateWhatsAppSummary appelée avec dayIndex:", dayIndex);
   console.log("📊 state.matches:", state.matches.length, "matchs");
@@ -1210,30 +1210,18 @@ function generateWhatsAppSummary(dayIndex = 0) {
   const dayGroup = dayGroups[dayIndex];
   const ranking = getRanking();
   
-  let text = "⚽ COPA DEL MUNDO 2026 ⚽\n";
+  let text = "⚽ *COPA 2026* ⚽\n";
   text += `📅 ${dayGroup.name}\n\n`;
-  text += "━━━━━━━━━━━━━━━━━━━━━\n";
-  text += "🏆 CLASIFICACIÓN GENERAL\n";
-  text += "━━━━━━━━━━━━━━━━━━━━━\n\n";
+  text += "🏆 *CLASIFICACIÓN*\n";
   
-  // Top 3 avec podium
-  ranking.slice(0, 3).forEach((participant, index) => {
+  // Classement compact (une ligne par participant)
+  ranking.forEach((participant, index) => {
     const medals = ["🥇", "🥈", "🥉"];
-    text += `${medals[index]} ${index + 1}. ${participant.name} - ${participant.totalPoints} pts\n`;
-    text += `   📊 ${participant.exactScores} exactos | ⚽ ${participant.correctFirstGoals} primeros goles\n\n`;
+    const medal = index < 3 ? medals[index] : `${index + 1}.`;
+    text += `${medal} ${participant.name}: ${participant.totalPoints}pts (${participant.exactScores}⚽${participant.correctFirstGoals}🎯)\n`;
   });
   
-  // Reste du classement
-  if (ranking.length > 3) {
-    ranking.slice(3).forEach((participant, index) => {
-      text += `${index + 4}. ${participant.name} - ${participant.totalPoints} pts\n`;
-      text += `   📊 ${participant.exactScores} exactos | ⚽ ${participant.correctFirstGoals} primeros goles\n\n`;
-    });
-  }
-  
-  text += "━━━━━━━━━━━━━━━━━━━━━\n";
-  text += "⚽ PARTIDOS DE LA JORNADA\n";
-  text += "━━━━━━━━━━━━━━━━━━━━━\n\n";
+  text += "\n⚽ *PARTIDOS*\n";
   
   // Matchs de la journée (seulement ceux avec résultat)
   dayGroup.matches.forEach((match) => {
@@ -1243,25 +1231,27 @@ function generateWhatsAppSummary(dayIndex = 0) {
     // Ne pas afficher les matchs en attente
     if (!hasResult) return;
     
-    // Formater la date au format jj/mois
+    // Formater la date au format jj/mm
     const matchDate = new Date(match.date);
-    const day = matchDate.getDate();
-    const monthNames = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-    const month = monthNames[matchDate.getMonth()];
+    const day = String(matchDate.getDate()).padStart(2, '0');
+    const month = String(matchDate.getMonth() + 1).padStart(2, '0');
     const dateStr = `${day}/${month}`;
     
-    // Noms des équipes et scores en gras
-    text += `${dateStr} - *${match.homeTeam}* *${actualScore.home}-${actualScore.away}* *${match.awayTeam}*\n`;
+    // Raccourcir les noms d'équipes (3 premières lettres en majuscules)
+    const homeShort = match.homeTeam.substring(0, 3).toUpperCase();
+    const awayShort = match.awayTeam.substring(0, 3).toUpperCase();
     
-    // Afficher le premier but si défini
+    // Ligne du match (tout sur une ligne)
+    text += `${dateStr} ${homeShort} ${actualScore.home}-${actualScore.away} ${awayShort}`;
+    
+    // Premier but (si défini)
     if (actualScore.firstGoalTeam) {
-      const firstGoalTeam = actualScore.firstGoalTeam === "home" ? match.homeTeam : match.awayTeam;
-      text += `Primer gol: *${firstGoalTeam}* ⚽\n\n`;
-    } else {
-      text += "\n";
+      const firstGoalShort = actualScore.firstGoalTeam === "home" ? homeShort : awayShort;
+      text += ` 🎯${firstGoalShort}`;
     }
+    text += "\n";
     
-    // Pronostics de chaque participant
+    // Pronostics de chaque participant (une ligne par participant)
     state.participants.forEach((participant) => {
       const prediction = match.predictions[participant.id] || { home: "", away: "", firstGoal: "" };
       const points = computePredictionPoints(prediction, actualScore);
@@ -1272,21 +1262,19 @@ function generateWhatsAppSummary(dayIndex = 0) {
       else if (points === 1) status = "⚠️";
       else status = "❌";
       
-      const firstGoalStatus = firstGoalCorrect ? "✅" : "❌";
-      const firstGoalText = prediction.firstGoal ?
-        (prediction.firstGoal === "home" ? match.homeTeam : match.awayTeam) :
-        "-";
+      const firstGoalStatus = firstGoalCorrect ? "🎯" : "❌";
       
-      text += `   _${participant.name}: ${prediction.home}-${prediction.away} ${status} (${points}pts) | 1er gol: ${firstGoalText} ${firstGoalStatus}_\n`;
+      // Nom court (prénom seulement ou 8 premiers caractères)
+      const nameParts = participant.name.split(' ');
+      const shortName = nameParts[0].substring(0, 8);
+      
+      text += ` ${shortName}: ${prediction.home}-${prediction.away}${status}${points}p ${firstGoalStatus}\n`;
     });
     
     text += "\n";
   });
   
-  text += "━━━━━━━━━━━━━━━━━━━━━\n";
-  text += "Leyenda:\n";
-  text += "✅ = Correcto | ❌ = Incorrecto | ⚠️ = Resultado correcto (1pt)\n";
-  text += "📊 = Marcadores exactos | ⚽ = Primeros goles correctos\n";
+  text += "✅=3p ⚠️=1p ❌=0p 🎯=1ergol\n";
   
   return text;
 }
