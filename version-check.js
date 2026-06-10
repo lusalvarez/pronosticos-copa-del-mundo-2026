@@ -2,7 +2,7 @@
 // Force le rechargement si une nouvelle version est disponible
 
 (function() {
-  const CURRENT_VERSION = '20260610-fixed-timestamps-2026';
+  const CURRENT_VERSION = '20260610-v2-force-reload';
   const VERSION_KEY = 'app_version';
   
   // Récupérer la version stockée
