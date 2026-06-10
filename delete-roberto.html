@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supprimer Roberto - Pronósticos</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #dc2626;
+      margin-bottom: 20px;
+    }
+    .info {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    button {
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #b91c1c;
+    }
+    button.secondary {
+      background: #6b7280;
+    }
+    button.secondary:hover {
+      background: #4b5563;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      display: none;
+    }
+    #status.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #10b981;
+    }
+    #status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #dc2626;
+    }
+    #status.info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #3b82f6;
+    }
+    .participant-info {
+      background: #f9fafb;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    .participant-info strong {
+      color: #1f2937;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🗑️ Supprimer le participant Roberto</h1>
+    
+    <div class="info">
+      <strong>⚠️ Attention :</strong> Cette action va supprimer TOUS les pronósticos du participant Roberto dans Firebase.
+    </div>
+
+    <div id="participant-info" class="participant-info" style="display: none;">
+      <strong>Participant trouvé :</strong>
+      <div id="participant-details"></div>
+    </div>
+
+    <div style="margin-top: 30px;">
+      <button onclick="searchRoberto()">🔍 Rechercher Roberto</button>
+      <button onclick="deleteRoberto()" id="deleteBtn" style="display: none;">🗑️ Supprimer Roberto</button>
+      <button class="secondary" onclick="window.close()">❌ Annuler</button>
+    </div>
+
+    <div id="status"></div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+
+  <script>
+    let robertoData = null;
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = type;
+      status.style.display = 'block';
+    }
+
+    function normalizeParticipantId(email) {
+      return email
+        .toLowerCase()
+        .replace(/\./g, '_dot_')
+        .replace(/@/g, '_at_')
+        .replace(/\$/g, '_dollar_')
+        .replace(/#/g, '_hash_')
+        .replace(/\[/g, '_lbracket_')
+        .replace(/\]/g, '_rbracket_')
+        .replace(/\//g, '_slash_');
+    }
+
+    async function searchRoberto() {
+      showStatus('🔍 Recherche de Roberto...', 'info');
+      
+      try {
+        if (typeof firebase === 'undefined' || !firebase.database) {
+          showStatus('❌ Firebase no está disponible', 'error');
+          return;
+        }
+
+        const db = firebase.database();
+        const participantsRef = db.ref('participants');
+        
+        const snapshot = await participantsRef.once('value');
+        const participants = snapshot.val();
+        
+        if (!participants) {
+          showStatus('❌ No hay participantes en Firebase', 'error');
+          return;
+        }
+
+        // Chercher Roberto
+        let found = false;
+        for (const [key, data] of Object.entries(participants)) {
+          if (data.name && data.name.toLowerCase().includes('roberto')) {
+            robertoData = { key, data };
+            found = true;
+            
+            // Afficher les infos
+            document.getElementById('participant-details').innerHTML = `
+              <p><strong>Nom:</strong> ${data.name}</p>
+              <p><strong>Email:</strong> ${data.email}</p>
+              <p><strong>ID Firebase:</strong> ${key}</p>
+              <p><strong>Nombre de pronósticos:</strong> ${data.predictions ? Object.keys(data.predictions).length : 0}</p>
+            `;
+            document.getElementById('participant-info').style.display = 'block';
+            document.getElementById('deleteBtn').style.display = 'inline-block';
+            
+            showStatus('✅ Roberto trouvé !', 'success');
+            break;
+          }
+        }
+
+        if (!found) {
+          showStatus('❌ Aucun participant nommé Roberto trouvé', 'error');
+        }
+
+      } catch (error) {
+        console.error('Error:', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function deleteRoberto() {
+      if (!robertoData) {
+        showStatus('❌ Veuillez d\'abord rechercher Roberto', 'error');
+        return;
+      }
+
+      const confirm = window.confirm(
+        `⚠️ Confirmer la suppression ?\n\n` +
+        `Participant: ${robertoData.data.name}\n` +
+        `Email: ${robertoData.data.email}\n` +
+        `Pronósticos: ${robertoData.data.predictions ? Object.keys(robertoData.data.predictions).length : 0}\n\n` +
+        `Cette action est IRRÉVERSIBLE !`
+      );
+
+      if (!confirm) return;
+
+      showStatus('🗑️ Suppression en cours...', 'info');
+
+      try {
+        const db = firebase.database();
+        const participantRef = db.ref(`participants/${robertoData.key}`);
+        
+        await participantRef.remove();
+        
+        showStatus(
+          `✅ Roberto supprimé avec succès !\n\n` +
+          `Tous ses pronósticos ont été supprimés de Firebase.`,
+          'success'
+        );
+
+        document.getElementById('participant-info').style.display = 'none';
+        document.getElementById('deleteBtn').style.display = 'none';
+        robertoData = null;
+
+      } catch (error) {
+        console.error('Error:', error);
+        showStatus(`❌ Error al eliminar: ${error.message}`, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

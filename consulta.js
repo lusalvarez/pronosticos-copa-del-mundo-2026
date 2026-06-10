@@ -125,10 +125,22 @@ function isDayLocked(dayMatches) {
   });
   
   const firstMatchDate = new Date(firstMatch.date);
+  
+  // IMPORTANT: Utiliser l'heure UTC pour que tous les participants (France et Colombie)
+  // voient le même état de freeze au même moment absolu
   const now = new Date();
+  const nowUTC = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    now.getUTCHours(),
+    now.getUTCMinutes(),
+    now.getUTCSeconds()
+  );
+  
   const deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
   
-  return now >= deadline;
+  return nowUTC >= deadline.getTime();
 }
 
 function toNumber(value) {

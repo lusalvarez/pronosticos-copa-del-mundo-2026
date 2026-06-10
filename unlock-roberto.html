@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Débloquer Roberto</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2563eb;
+      margin-bottom: 20px;
+    }
+    .info {
+      background: #dbeafe;
+      border-left: 4px solid #2563eb;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    button.secondary {
+      background: #6b7280;
+    }
+    button.secondary:hover {
+      background: #4b5563;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      display: none;
+    }
+    #status.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #10b981;
+    }
+    #status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #dc2626;
+    }
+    #status.info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #3b82f6;
+    }
+    .form-group {
+      margin: 20px 0;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #374151;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔓 Débloquer l'écran de pronósticos pour Roberto</h1>
+    
+    <div class="info">
+      <strong>ℹ️ Information :</strong> Ce script va créer ou mettre à jour le mot de passe de Roberto dans Firebase.
+    </div>
+
+    <div class="form-group">
+      <label for="name">Nom du participant :</label>
+      <input type="text" id="name" value="Roberto" />
+    </div>
+
+    <div class="form-group">
+      <label for="email">Email du participant :</label>
+      <input type="email" id="email" placeholder="roberto@example.com" />
+    </div>
+
+    <div class="form-group">
+      <label for="password">Mot de passe :</label>
+      <input type="text" id="password" value="1234" />
+    </div>
+
+    <div style="margin-top: 30px;">
+      <button onclick="unlockRoberto()">🔓 Créer/Débloquer Roberto</button>
+      <button class="secondary" onclick="window.location.href='index.html'">↩️ Retour à l'admin</button>
+    </div>
+
+    <div id="status"></div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+
+  <script>
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = type;
+      status.style.display = 'block';
+    }
+
+    function normalizeParticipantId(email) {
+      return email
+        .toLowerCase()
+        .replace(/\./g, '_dot_')
+        .replace(/@/g, '_at_')
+        .replace(/\$/g, '_dollar_')
+        .replace(/#/g, '_hash_')
+        .replace(/\[/g, '_lbracket_')
+        .replace(/\]/g, '_rbracket_')
+        .replace(/\//g, '_slash_');
+    }
+
+    async function unlockRoberto() {
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!name) {
+        showStatus('❌ Veuillez entrer un nom', 'error');
+        return;
+      }
+
+      if (!email) {
+        showStatus('❌ Veuillez entrer un email', 'error');
+        return;
+      }
+
+      if (!password) {
+        showStatus('❌ Veuillez entrer un mot de passe', 'error');
+        return;
+      }
+
+      showStatus('🔄 Création/mise à jour en cours...', 'info');
+
+      try {
+        if (typeof firebase === 'undefined' || !firebase.database) {
+          showStatus('❌ Firebase no está disponible', 'error');
+          return;
+        }
+
+        const db = firebase.database();
+        const participantId = normalizeParticipantId(email);
+
+        // Créer/mettre à jour le mot de passe dans Firebase
+        await db.ref(`passwords/${participantId}`).set({
+          name: name,
+          email: email,
+          password: password,
+          createdAt: new Date().toISOString(),
+          createdBy: 'admin-unlock-script'
+        });
+
+        // Créer le participant dans Firebase s'il n'existe pas
+        const participantRef = db.ref(`participants/${participantId}`);
+        const snapshot = await participantRef.once('value');
+        
+        if (!snapshot.exists()) {
+          await participantRef.set({
+            name: name,
+            email: email,
+            predictions: {}
+          });
+        }
+
+        showStatus(
+          `✅ Roberto débloqué avec succès !\n\n` +
+          `Nom: ${name}\n` +
+          `Email: ${email}\n` +
+          `Mot de passe: ${password}\n\n` +
+          `Roberto peut maintenant se connecter sur la page participant.html avec ces identifiants.`,
+          'success'
+        );
+
+      } catch (error) {
+        console.error('Error:', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Déblocage d'urgence</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #f59e0b;
+      margin-bottom: 20px;
+    }
+    .warning {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .info {
+      background: #dbeafe;
+      border-left: 4px solid #2563eb;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    button {
+      background: #f59e0b;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #d97706;
+    }
+    button.secondary {
+      background: #6b7280;
+    }
+    button.secondary:hover {
+      background: #4b5563;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      display: none;
+    }
+    #status.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #10b981;
+    }
+    #status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #dc2626;
+    }
+    #status.info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #3b82f6;
+    }
+    .form-group {
+      margin: 20px 0;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #374151;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+    }
+    .day-list {
+      background: #f9fafb;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚨 Déblocage d'urgence - Procédure d'exception</h1>
+    
+    <div class="warning">
+      <strong>⚠️ Attention :</strong> Cette procédure d'urgence permet de décaler le freeze d'une journée pour permettre à un participant en retard d'envoyer ses pronostics.
+    </div>
+
+    <div class="info">
+      <strong>📋 Procédure recommandée :</strong>
+      <ol style="margin: 10px 0; padding-left: 20px;">
+        <li>Identifier la journée concernée</li>
+        <li>Décaler le freeze de quelques heures (ex: +2h ou +3h)</li>
+        <li>Informer le participant qu'il a X heures pour envoyer</li>
+        <li>Le participant envoie ses pronostics</li>
+        <li>Optionnel : remettre le freeze à l'heure normale</li>
+      </ol>
+    </div>
+
+    <div class="form-group">
+      <label for="daySelect">Sélectionner la journée à débloquer :</label>
+      <select id="daySelect">
+        <option value="">-- Chargement des journées --</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="delayHours">Nombre d'heures de délai supplémentaire :</label>
+      <input type="number" id="delayHours" value="2" min="1" max="24" />
+      <small style="color: #6b7280;">Recommandé : 2-3 heures pour laisser le temps au participant</small>
+    </div>
+
+    <div style="margin-top: 30px;">
+      <button onclick="loadDays()">🔄 Charger les journées</button>
+      <button onclick="applyEmergencyDelay()">🚨 Appliquer le délai d'urgence</button>
+      <button class="secondary" onclick="window.location.href='index.html'">↩️ Retour à l'admin</button>
+    </div>
+
+    <div id="status"></div>
+
+    <div class="info" style="margin-top: 30px;">
+      <strong>💡 Alternative :</strong> Vous pouvez aussi utiliser le bouton "Décaler le freeze" directement sur l'écran d'administration (index.html) pour chaque journée.
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+
+  <script>
+    let matches = [];
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = type;
+      status.style.display = 'block';
+    }
+
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    async function loadDays() {
+      showStatus('🔄 Chargement des matchs...', 'info');
+
+      try {
+        if (typeof firebase === 'undefined' || !firebase.database) {
+          showStatus('❌ Firebase no está disponible', 'error');
+          return;
+        }
+
+        const db = firebase.database();
+        const snapshot = await db.ref('matches').once('value');
+        const firebaseMatches = snapshot.val();
+
+        if (!firebaseMatches) {
+          showStatus('❌ Aucun match trouvé dans Firebase', 'error');
+          return;
+        }
+
+        matches = Object.entries(firebaseMatches).map(([id, data]) => ({
+          id,
+          ...data
+        }));
+
+        // Grouper par journée
+        const dayGroups = groupMatchesByDay(matches);
+
+        // Remplir le select
+        const select = document.getElementById('daySelect');
+        select.innerHTML = '<option value="">-- Sélectionner une journée --</option>';
+
+        dayGroups.forEach((day, index) => {
+          const firstMatch = day.matches[0];
+          const option = document.createElement('option');
+          option.value = index;
+          option.textContent = `${day.name} - ${formatDate(firstMatch.date)} (${day.matches.length} matchs)`;
+          select.appendChild(option);
+        });
+
+        showStatus(`✅ ${dayGroups.length} journées chargées`, 'success');
+
+      } catch (error) {
+        console.error('Error:', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    function groupMatchesByDay(matches) {
+      const worldCupMatches = matches.filter(m => !m.addedManually).sort((a, b) => new Date(a.date) - new Date(b.date));
+      const dayGroups = [];
+      let currentIndex = 0;
+
+      const dayStructure = [
+        { name: "JORNADA 1", count: 24, stage: "Fase de grupos" },
+        { name: "JORNADA 2", count: 24, stage: "Fase de grupos" },
+        { name: "JORNADA 3", count: 24, stage: "Fase de grupos" },
+        { name: "DIECISEISAVOS DE FINAL", count: 16, stage: "Dieciseisavos de final" },
+        { name: "OCTAVOS DE FINAL", count: 8, stage: "Octavos de final" },
+        { name: "CUARTOS DE FINAL", count: 4, stage: "Cuartos de final" },
+        { name: "SEMIFINALES", count: 2, stage: "Semifinales" },
+        { name: "FINALES", count: 2, stage: "Finales" }
+      ];
+
+      for (const dayDef of dayStructure) {
+        if (currentIndex >= worldCupMatches.length) break;
+        const dayMatches = worldCupMatches.slice(currentIndex, currentIndex + dayDef.count);
+        if (dayMatches.length > 0) {
+          dayGroups.push({
+            name: dayDef.name,
+            matches: dayMatches,
+            stage: dayDef.stage,
+            date: dayMatches[0].date
+          });
+          currentIndex += dayMatches.length;
+        }
+      }
+
+      return dayGroups;
+    }
+
+    async function applyEmergencyDelay() {
+      const dayIndex = parseInt(document.getElementById('daySelect').value);
+      const delayHours = parseInt(document.getElementById('delayHours').value);
+
+      if (isNaN(dayIndex)) {
+        showStatus('❌ Veuillez sélectionner une journée', 'error');
+        return;
+      }
+
+      if (isNaN(delayHours) || delayHours < 1) {
+        showStatus('❌ Veuillez entrer un nombre d\'heures valide', 'error');
+        return;
+      }
+
+      const dayGroups = groupMatchesByDay(matches);
+      const dayGroup = dayGroups[dayIndex];
+
+      const confirm = window.confirm(
+        `🚨 DÉBLOCAGE D'URGENCE\n\n` +
+        `Journée: ${dayGroup.name}\n` +
+        `Délai supplémentaire: +${delayHours}h\n\n` +
+        `Cela permettra aux participants d'envoyer leurs pronostics pendant ${delayHours}h supplémentaires.\n\n` +
+        `Confirmer ?`
+      );
+
+      if (!confirm) return;
+
+      showStatus('🔄 Application du délai d\'urgence...', 'info');
+
+      try {
+        const db = firebase.database();
+        
+        // Récupérer le délai actuel
+        const delaySnapshot = await db.ref(`freezeDelays/day${dayIndex}`).once('value');
+        const currentDelay = delaySnapshot.exists() ? (delaySnapshot.val().hours || 0) : 0;
+        const newTotalDelay = currentDelay + delayHours;
+
+        // Appliquer le nouveau délai
+        await db.ref(`freezeDelays/day${dayIndex}`).set({
+          hours: newTotalDelay,
+          dayName: dayGroup.name,
+          updatedAt: new Date().toISOString(),
+          updatedBy: 'emergency-unlock',
+          reason: 'Déblocage d\'urgence pour participant en retard'
+        });
+
+        const firstMatchDate = new Date(dayGroup.matches[0].date);
+        const baseDeadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
+        const newDeadline = new Date(baseDeadline.getTime() + (newTotalDelay * 60 * 60 * 1000));
+
+        showStatus(
+          `✅ Délai d'urgence appliqué !\n\n` +
+          `${dayGroup.name}\n` +
+          `Nouvelle deadline: ${formatDate(newDeadline.toISOString())}\n` +
+          `Délai total: +${newTotalDelay}h\n\n` +
+          `Le participant peut maintenant envoyer ses pronostics jusqu'à cette heure.`,
+          'success'
+        );
+
+      } catch (error) {
+        console.error('Error:', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    // Charger automatiquement au démarrage
+    window.addEventListener('load', loadDays);
+  </script>
+</body>
+</html>

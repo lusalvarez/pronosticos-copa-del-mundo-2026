@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nettoyer Roberto du localStorage</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #dc2626;
+      margin-bottom: 20px;
+    }
+    .info {
+      background: #fef2f2;
+      border-left: 4px solid #dc2626;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    button {
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #b91c1c;
+    }
+    button.secondary {
+      background: #6b7280;
+    }
+    button.secondary:hover {
+      background: #4b5563;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      display: none;
+    }
+    #status.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #10b981;
+    }
+    #status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #dc2626;
+    }
+    #status.info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #3b82f6;
+    }
+    .data-info {
+      background: #f9fafb;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    pre {
+      background: #1f2937;
+      color: #f3f4f6;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧹 Nettoyer Roberto du localStorage</h1>
+    
+    <div class="info">
+      <strong>ℹ️ Information :</strong> Roberto est stocké uniquement dans le localStorage de votre navigateur (écran admin), pas dans Firebase.
+    </div>
+
+    <div id="data-info" class="data-info" style="display: none;">
+      <strong>Données actuelles dans localStorage :</strong>
+      <div id="data-details"></div>
+    </div>
+
+    <div style="margin-top: 30px;">
+      <button onclick="showCurrentData()">👁️ Voir les données actuelles</button>
+      <button onclick="removeRoberto()" id="removeBtn">🗑️ Supprimer Roberto</button>
+      <button class="secondary" onclick="window.location.href='index.html'">↩️ Retour à l'admin</button>
+    </div>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'worldCupPronostics';
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = type;
+      status.style.display = 'block';
+    }
+
+    function showCurrentData() {
+      try {
+        const data = localStorage.getItem(STORAGE_KEY);
+        
+        if (!data) {
+          showStatus('❌ Aucune donnée trouvée dans localStorage', 'error');
+          return;
+        }
+
+        const parsed = JSON.parse(data);
+        
+        // Afficher les participants
+        let participantsHtml = '<h3>Participants :</h3><ul>';
+        if (parsed.participants && parsed.participants.length > 0) {
+          parsed.participants.forEach(p => {
+            participantsHtml += `<li><strong>${p.name}</strong> (${p.email})</li>`;
+          });
+        } else {
+          participantsHtml += '<li>Aucun participant</li>';
+        }
+        participantsHtml += '</ul>';
+
+        // Afficher les matchs
+        participantsHtml += `<h3>Matchs : ${parsed.matches ? parsed.matches.length : 0}</h3>`;
+
+        document.getElementById('data-details').innerHTML = participantsHtml;
+        document.getElementById('data-info').style.display = 'block';
+        
+        showStatus('✅ Données chargées', 'success');
+
+      } catch (error) {
+        console.error('Error:', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    function removeRoberto() {
+      try {
+        const data = localStorage.getItem(STORAGE_KEY);
+        
+        if (!data) {
+          showStatus('❌ Aucune donnée trouvée dans localStorage', 'error');
+          return;
+        }
+
+        const parsed = JSON.parse(data);
+        
+        if (!parsed.participants || parsed.participants.length === 0) {
+          showStatus('❌ Aucun participant trouvé', 'error');
+          return;
+        }
+
+        // Chercher Roberto
+        const robertoIndex = parsed.participants.findIndex(p => 
+          p.name && p.name.toLowerCase().includes('roberto')
+        );
+
+        if (robertoIndex === -1) {
+          showStatus('❌ Roberto non trouvé dans les participants', 'error');
+          return;
+        }
+
+        const roberto = parsed.participants[robertoIndex];
+        
+        const confirm = window.confirm(
+          `⚠️ Confirmer la suppression ?\n\n` +
+          `Participant: ${roberto.name}\n` +
+          `Email: ${roberto.email}\n\n` +
+          `Cette action supprimera Roberto du localStorage de l'admin.`
+        );
+
+        if (!confirm) return;
+
+        // Supprimer Roberto
+        parsed.participants.splice(robertoIndex, 1);
+
+        // Supprimer ses pronósticos de tous les matchs
+        if (parsed.matches) {
+          parsed.matches.forEach(match => {
+            if (match.predictions && match.predictions[roberto.id]) {
+              delete match.predictions[roberto.id];
+            }
+          });
+        }
+
+        // Sauvegarder
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+
+        showStatus(
+          `✅ Roberto supprimé avec succès !\n\n` +
+          `Rechargez la page d'administration pour voir les changements.`,
+          'success'
+        );
+
+        // Mettre à jour l'affichage
+        setTimeout(() => {
+          showCurrentData();
+        }, 1000);
+
+      } catch (error) {
+        console.error('Error:', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    // Afficher les données au chargement
+    window.addEventListener('load', showCurrentData);
+  </script>
+</body>
+</html>
