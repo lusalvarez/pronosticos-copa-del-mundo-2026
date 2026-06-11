@@ -80,6 +80,7 @@ function groupMatchesByDay(matches) {
   ];
   
   // Grouper les matchs de la Coupe du Monde selon la structure définie
+  let dayNumber = 1;  // Compteur pour numéroter les journées
   for (const dayDef of dayStructure) {
     if (currentIndex >= worldCupMatches.length) {
       break;
@@ -88,14 +89,22 @@ function groupMatchesByDay(matches) {
     const dayMatches = worldCupMatches.slice(currentIndex, currentIndex + dayDef.count);
     
     if (dayMatches.length > 0) {
+      // Ajouter la propriété 'day' à chaque match du groupe
+      dayMatches.forEach(match => {
+        match.day = dayNumber;
+      });
+      
       dayGroups.push({
         name: dayDef.name,
         matches: dayMatches,
         stage: dayDef.stage,
         date: dayMatches[0].date,
-        isWorldCup: true
+        isWorldCup: true,
+        isManual: false,  // Explicitly mark World Cup matches as not manual
+        dayNumber: dayNumber  // Ajouter le numéro de journée au groupe
       });
       currentIndex += dayMatches.length;
+      dayNumber++;  // Incrémenter pour la prochaine journée
     }
   }
   
