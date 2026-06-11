@@ -69,10 +69,18 @@ jobs:
               // Récupérer tous les matchs depuis Firebase
               console.log('📡 Récupération des matchs depuis Firebase...');
               const matchesSnapshot = await db.ref('matches').once('value');
-              const matches = matchesSnapshot.val() || [];
+              const matchesData = matchesSnapshot.val();
               
-              console.log('📊 Nombre de matchs récupérés:', Array.isArray(matches) ? matches.length : Object.keys(matches).length);
-              console.log('📋 Type de données:', Array.isArray(matches) ? 'Array' : typeof matches);
+              if (!matchesData) {
+                console.log('⚠️ Aucune donnée trouvée dans Firebase');
+                process.exit(0);
+              }
+              
+              // Convertir l'objet en tableau si nécessaire
+              const matches = Array.isArray(matchesData) ? matchesData : Object.values(matchesData);
+              
+              console.log('📊 Nombre de matchs récupérés:', matches.length);
+              console.log('📋 Type de données original:', Array.isArray(matchesData) ? 'Array' : 'Object');
               
               let updatedCount = 0;
               let errorCount = 0;
@@ -80,6 +88,11 @@ jobs:
               
               for (let i = 0; i < matches.length; i++) {
                 const match = matches[i];
+                
+                if (!match) {
+                  skippedCount++;
+                  continue;
+                }
                 
                 // Ignorer les matchs manuels
                 if (match.addedManually || match.stage === "Partido manual") {
