@@ -64,10 +64,15 @@ jobs:
             try {
               console.log('🔄 Début de la mise à jour automatique des résultats...');
               console.log('⏰ Heure d\'exécution:', new Date().toISOString());
+              console.log('🔗 URL de la base de données:', admin.app().options.databaseURL);
               
               // Récupérer tous les matchs depuis Firebase
+              console.log('📡 Récupération des matchs depuis Firebase...');
               const matchesSnapshot = await db.ref('matches').once('value');
               const matches = matchesSnapshot.val() || [];
+              
+              console.log('📊 Nombre de matchs récupérés:', Array.isArray(matches) ? matches.length : Object.keys(matches).length);
+              console.log('📋 Type de données:', Array.isArray(matches) ? 'Array' : typeof matches);
               
               let updatedCount = 0;
               let errorCount = 0;
