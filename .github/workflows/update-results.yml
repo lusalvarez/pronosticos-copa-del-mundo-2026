@@ -1,0 +1,175 @@
+name: Update Match Results Automatically
+
+on:
+  schedule:
+    # Exécuter 4 fois par jour : 21h, minuit, 4h et 8h (heure UTC)
+    # 21h Paris = 19h UTC
+    # Minuit Paris = 22h UTC
+    # 4h Paris = 2h UTC
+    # 8h Paris = 6h UTC
+    - cron: '0 19 * * *'  # 21h heure de Paris
+    - cron: '0 22 * * *'  # Minuit heure de Paris
+    - cron: '0 2 * * *'   # 4h du matin heure de Paris
+    - cron: '0 6 * * *'   # 8h du matin heure de Paris
+  workflow_dispatch:  # Permet aussi l'exécution manuelle depuis GitHub
+
+jobs:
+  update-results:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: |
+          npm install firebase-admin node-fetch
+      
+      - name: Create update script
+        run: |
+          cat > update-results.js << 'EOF'
+          const admin = require('firebase-admin');
+          const fetch = require('node-fetch');
+
+          // Configuration Firebase
+          const serviceAccount = {
+            type: "service_account",
+            project_id: "pronostico-copa-del-mundo-2026",
+            private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+            private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            client_email: process.env.FIREBASE_CLIENT_EMAIL,
+            client_id: process.env.FIREBASE_CLIENT_ID,
+            auth_uri: "https://accounts.google.com/o/oauth2/auth",
+            token_uri: "https://oauth2.googleapis.com/token",
+            auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+            client_x509_cert_url: process.env.FIREBASE_CERT_URL
+          };
+
+          admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+            databaseURL: "https://pronostico-copa-del-mundo-2026-default-rtdb.europe-west1.firebasedatabase.app"
+          });
+
+          const db = admin.database();
+          const API_KEY = '96eea8d47bdd7070e11bdffe7159f5d3';
+
+          async function updateResults() {
+            try {
+              console.log('🔄 Début de la mise à jour automatique des résultats...');
+              console.log('⏰ Heure d\'exécution:', new Date().toISOString());
+              
+              // Récupérer tous les matchs depuis Firebase
+              const matchesSnapshot = await db.ref('matches').once('value');
+              const matches = matchesSnapshot.val() || [];
+              
+              let updatedCount = 0;
+              let errorCount = 0;
+              let skippedCount = 0;
+              
+              for (let i = 0; i < matches.length; i++) {
+                const match = matches[i];
+                
+                // Ignorer les matchs manuels
+                if (match.addedManually || match.stage === "Partido manual") {
+                  skippedCount++;
+                  continue;
+                }
+                
+                // Ignorer les matchs qui ont déjà des résultats
+                if (match.homeScore !== null && match.awayScore !== null) {
+                  skippedCount++;
+                  continue;
+                }
+                
+                // Vérifier si le match est terminé (date passée + 2h30)
+                const matchDate = new Date(match.date);
+                const now = new Date();
+                const timeDiff = now - matchDate;
+                const hoursElapsed = timeDiff / (1000 * 60 * 60);
+                
+                if (hoursElapsed < 2.5) {
+                  skippedCount++;
+                  continue; // Match pas encore terminé
+                }
+                
+                try {
+                  // Rechercher le match dans l'API
+                  const searchUrl = `https://v3.football.api-sports.io/fixtures?league=1&season=2026&team=${encodeURIComponent(match.homeTeam)}`;
+                  
+                  const response = await fetch(searchUrl, {
+                    headers: {
+                      'x-apisports-key': API_KEY
+                    }
+                  });
+                  
+                  const data = await response.json();
+                  
+                  if (data.response && data.response.length > 0) {
+                    // Trouver le match correspondant
+                    const apiMatch = data.response.find(m => {
+                      const apiDate = new Date(m.fixture.date);
+                      const dateDiff = Math.abs(apiDate - matchDate);
+                      const daysDiff = dateDiff / (1000 * 60 * 60 * 24);
+                      
+                      return daysDiff < 1 && 
+                             m.teams.home.name.includes(match.homeTeam.split(' ')[0]) &&
+                             m.teams.away.name.includes(match.awayTeam.split(' ')[0]);
+                    });
+                    
+                    if (apiMatch && apiMatch.fixture.status.short === 'FT') {
+                      // Match terminé, mettre à jour les scores
+                      matches[i].homeScore = apiMatch.goals.home;
+                      matches[i].awayScore = apiMatch.goals.away;
+                      
+                      console.log(`✅ Match ${i}: ${match.homeTeam} ${apiMatch.goals.home}-${apiMatch.goals.away} ${match.awayTeam}`);
+                      updatedCount++;
+                    }
+                  }
+                  
+                  // Pause pour respecter les limites de l'API (100 requêtes/jour)
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  
+                } catch (error) {
+                  console.error(`❌ Erreur pour le match ${i}:`, error.message);
+                  errorCount++;
+                }
+              }
+              
+              // Sauvegarder les matchs mis à jour
+              if (updatedCount > 0) {
+                await db.ref('matches').set(matches);
+                console.log(`\n✅ Mise à jour terminée: ${updatedCount} match(s) mis à jour`);
+              } else {
+                console.log('\nℹ️ Aucun nouveau résultat à mettre à jour');
+              }
+              
+              console.log(`📊 Statistiques: ${updatedCount} mis à jour, ${skippedCount} ignorés, ${errorCount} erreur(s)`);
+              
+              process.exit(0);
+              
+            } catch (error) {
+              console.error('❌ Erreur lors de la mise à jour:', error);
+              process.exit(1);
+            }
+          }
+
+          updateResults();
+          EOF
+      
+      - name: Run update script
+        env:
+          FIREBASE_PRIVATE_KEY_ID: ${{ secrets.FIREBASE_PRIVATE_KEY_ID }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_CLIENT_ID: ${{ secrets.FIREBASE_CLIENT_ID }}
+          FIREBASE_CERT_URL: ${{ secrets.FIREBASE_CERT_URL }}
+        run: node update-results.js
+
+# Made with Bob
