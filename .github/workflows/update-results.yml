@@ -88,15 +88,13 @@ jobs:
                   continue;
                 }
                 
-                // Vérifier si le match est terminé (date passée + 2h30)
+                // Vérifier si le match est dans le passé
                 const matchDate = new Date(match.date);
                 const now = new Date();
-                const timeDiff = now - matchDate;
-                const hoursElapsed = timeDiff / (1000 * 60 * 60);
                 
-                if (hoursElapsed < 2.5) {
+                if (matchDate > now) {
                   skippedCount++;
-                  continue; // Match pas encore terminé
+                  continue; // Match futur
                 }
                 
                 try {
