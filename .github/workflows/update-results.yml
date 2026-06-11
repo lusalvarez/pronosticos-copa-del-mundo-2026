@@ -67,6 +67,8 @@ jobs:
               
               // ÉTAPE 1: Récupérer TOUS les matchs terminés depuis l'API
               console.log('📡 Récupération des matchs terminés depuis l\'API Football...');
+              console.log('🔗 URL API:', 'https://v3.football.api-sports.io/fixtures?league=1&season=2026&status=FT');
+              
               const apiUrl = 'https://v3.football.api-sports.io/fixtures?league=1&season=2026&status=FT';
               
               const apiResponse = await fetch(apiUrl, {
@@ -77,8 +79,27 @@ jobs:
               
               const apiData = await apiResponse.json();
               
+              console.log('📊 Réponse API:', JSON.stringify(apiData, null, 2).substring(0, 500));
+              console.log('📊 Nombre de résultats:', apiData.response ? apiData.response.length : 0);
+              console.log('📊 Erreurs API:', apiData.errors ? JSON.stringify(apiData.errors) : 'Aucune');
+              
               if (!apiData.response || apiData.response.length === 0) {
                 console.log('ℹ️ Aucun match terminé trouvé dans l\'API');
+                console.log('💡 Essayons de récupérer TOUS les matchs (pas seulement terminés)...');
+                
+                const allMatchesUrl = 'https://v3.football.api-sports.io/fixtures?league=1&season=2026';
+                const allMatchesResponse = await fetch(allMatchesUrl, {
+                  headers: {
+                    'x-apisports-key': API_KEY
+                  }
+                });
+                const allMatchesData = await allMatchesResponse.json();
+                
+                console.log('📊 Tous les matchs (tous statuts):', allMatchesData.response ? allMatchesData.response.length : 0);
+                if (allMatchesData.response && allMatchesData.response.length > 0) {
+                  console.log('📋 Statuts des matchs:', allMatchesData.response.map(m => m.fixture.status.short).join(', '));
+                }
+                
                 console.log('📊 Statistiques: 0 mis à jour, 0 ignorés, 0 erreur(s)');
                 process.exit(0);
               }
