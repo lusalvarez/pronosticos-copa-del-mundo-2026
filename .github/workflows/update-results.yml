@@ -64,9 +64,28 @@ jobs:
             try {
               console.log('🔄 Début de la mise à jour automatique des résultats...');
               console.log('⏰ Heure d\'exécution:', new Date().toISOString());
-              console.log('🔗 URL de la base de données:', admin.app().options.databaseURL);
               
-              // Récupérer tous les matchs depuis Firebase
+              // ÉTAPE 1: Récupérer TOUS les matchs terminés depuis l'API
+              console.log('📡 Récupération des matchs terminés depuis l\'API Football...');
+              const apiUrl = 'https://v3.football.api-sports.io/fixtures?league=1&season=2026&status=FT';
+              
+              const apiResponse = await fetch(apiUrl, {
+                headers: {
+                  'x-apisports-key': API_KEY
+                }
+              });
+              
+              const apiData = await apiResponse.json();
+              
+              if (!apiData.response || apiData.response.length === 0) {
+                console.log('ℹ️ Aucun match terminé trouvé dans l\'API');
+                console.log('📊 Statistiques: 0 mis à jour, 0 ignorés, 0 erreur(s)');
+                process.exit(0);
+              }
+              
+              console.log(`📊 ${apiData.response.length} match(s) terminé(s) trouvé(s) dans l\'API`);
+              
+              // ÉTAPE 2: Récupérer les matchs depuis Firebase
               console.log('📡 Récupération des matchs depuis Firebase...');
               const matchesSnapshot = await db.ref('matches').once('value');
               const matchesData = matchesSnapshot.val();
@@ -76,84 +95,78 @@ jobs:
                 process.exit(0);
               }
               
-              // Convertir l'objet en tableau si nécessaire
-              const matches = Array.isArray(matchesData) ? matchesData : Object.values(matchesData);
+              // Convertir en tableau avec index
+              const firebaseMatches = Array.isArray(matchesData) ? matchesData : Object.values(matchesData);
+              const firebaseMatchesKeys = Array.isArray(matchesData) ?
+                firebaseMatches.map((_, i) => i) :
+                Object.keys(matchesData);
               
-              console.log('📊 Nombre de matchs récupérés:', matches.length);
-              console.log('📋 Type de données original:', Array.isArray(matchesData) ? 'Array' : 'Object');
+              console.log(`📊 ${firebaseMatches.length} match(s) dans Firebase`);
               
               let updatedCount = 0;
               let errorCount = 0;
               let skippedCount = 0;
               
-              for (let i = 0; i < matches.length; i++) {
-                const match = matches[i];
-                
-                if (!match) {
-                  skippedCount++;
-                  continue;
-                }
-                
-                // Ignorer les matchs manuels
-                if (match.addedManually || match.stage === "Partido manual") {
-                  skippedCount++;
-                  continue;
-                }
-                
-                // Ignorer les matchs qui ont déjà des résultats
-                if (match.homeScore !== null && match.awayScore !== null) {
-                  skippedCount++;
-                  continue;
-                }
-                
-                // Vérifier si le match est dans le passé
-                const matchDate = new Date(match.date);
-                const now = new Date();
-                
-                if (matchDate > now) {
-                  skippedCount++;
-                  continue; // Match futur
-                }
-                
+              // ÉTAPE 3: Pour chaque match terminé de l'API, chercher dans Firebase
+              for (const apiMatch of apiData.response) {
                 try {
-                  // Rechercher le match dans l'API
-                  const searchUrl = `https://v3.football.api-sports.io/fixtures?league=1&season=2026&team=${encodeURIComponent(match.homeTeam)}`;
+                  const homeTeam = apiMatch.teams.home.name;
+                  const awayTeam = apiMatch.teams.away.name;
+                  const homeScore = apiMatch.goals.home;
+                  const awayScore = apiMatch.goals.away;
                   
-                  const response = await fetch(searchUrl, {
-                    headers: {
-                      'x-apisports-key': API_KEY
-                    }
-                  });
+                  // Chercher le match correspondant dans Firebase
+                  let matchIndex = -1;
+                  let firebaseMatch = null;
                   
-                  const data = await response.json();
-                  
-                  if (data.response && data.response.length > 0) {
-                    // Trouver le match correspondant
-                    const apiMatch = data.response.find(m => {
-                      const apiDate = new Date(m.fixture.date);
-                      const dateDiff = Math.abs(apiDate - matchDate);
-                      const daysDiff = dateDiff / (1000 * 60 * 60 * 24);
-                      
-                      return daysDiff < 1 && 
-                             m.teams.home.name.includes(match.homeTeam.split(' ')[0]) &&
-                             m.teams.away.name.includes(match.awayTeam.split(' ')[0]);
-                    });
+                  for (let i = 0; i < firebaseMatches.length; i++) {
+                    const fbMatch = firebaseMatches[i];
+                    if (!fbMatch) continue;
                     
-                    if (apiMatch && apiMatch.fixture.status.short === 'FT') {
-                      // Match terminé, mettre à jour les scores
-                      matches[i].homeScore = apiMatch.goals.home;
-                      matches[i].awayScore = apiMatch.goals.away;
-                      
-                      console.log(`✅ Match ${i}: ${match.homeTeam} ${apiMatch.goals.home}-${apiMatch.goals.away} ${match.awayTeam}`);
-                      updatedCount++;
+                    // Ignorer les matchs manuels
+                    if (fbMatch.addedManually || fbMatch.stage === "Partido manual") {
+                      continue;
+                    }
+                    
+                    // Vérifier si c'est le même match (comparaison des noms d'équipes)
+                    const homeMatch = homeTeam.toLowerCase().includes(fbMatch.homeTeam.toLowerCase().split(' ')[0]) ||
+                                     fbMatch.homeTeam.toLowerCase().includes(homeTeam.toLowerCase().split(' ')[0]);
+                    const awayMatch = awayTeam.toLowerCase().includes(fbMatch.awayTeam.toLowerCase().split(' ')[0]) ||
+                                     fbMatch.awayTeam.toLowerCase().includes(awayTeam.toLowerCase().split(' ')[0]);
+                    
+                    if (homeMatch && awayMatch) {
+                      matchIndex = i;
+                      firebaseMatch = fbMatch;
+                      break;
                     }
                   }
                   
-                  // Pause pour respecter les limites de l'API (100 requêtes/jour)
-                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  if (matchIndex === -1) {
+                    // Match non trouvé dans Firebase
+                    console.log(`⏭️ ${homeTeam} vs ${awayTeam} - Non trouvé dans Firebase`);
+                    skippedCount++;
+                    continue;
+                  }
+                  
+                  // Vérifier si le match a déjà des résultats
+                  if (firebaseMatch.homeScore !== null && firebaseMatch.awayScore !== null) {
+                    console.log(`⏭️ ${homeTeam} ${homeScore}-${awayScore} ${awayTeam} - Déjà mis à jour`);
+                    skippedCount++;
+                    continue;
+                  }
+                  
+                  // MISE À JOUR: Le match est terminé dans l'API et n'a pas de résultat dans Firebase
+                  const matchKey = firebaseMatchesKeys[matchIndex];
+                  await db.ref(`matches/${matchKey}`).update({
+                    homeScore: homeScore,
+                    awayScore: awayScore
+                  });
+                  
+                  console.log(`✅ ${homeTeam} ${homeScore}-${awayScore} ${awayTeam} - Mis à jour`);
+                  updatedCount++;
                   
                 } catch (error) {
-                  console.error(`❌ Erreur pour le match ${i}:`, error.message);
+                  console.error(`❌ Erreur:`, error.message);
                   errorCount++;
                 }
               }
