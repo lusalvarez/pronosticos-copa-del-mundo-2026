@@ -121,16 +121,26 @@ function loadMatchesFromSharedData() {
       
       console.log(`✅ ${matches.length} partidos cargados desde Firebase`);
       
-      if (loadingDiv) {
-        loadingDiv.innerHTML = `<p style="color: #10b981;">✅ ${matches.length} partidos cargados desde Firebase</p>`;
-        setTimeout(() => {
-          loadingDiv.style.display = "none";
-        }, 2000);
-      }
-      
-      // Activer le bouton de démarrage
-      startBtn.disabled = false;
-      startBtn.style.opacity = "1";
+      // Charger les décalages de freeze depuis Firebase
+      db.ref('freezeDelays').once('value', (delaysSnapshot) => {
+        if (delaysSnapshot.exists()) {
+          window.freezeDelaysCache = delaysSnapshot.val();
+          console.log('✅ Décalages de freeze chargés:', window.freezeDelaysCache);
+        } else {
+          window.freezeDelaysCache = {};
+        }
+        
+        if (loadingDiv) {
+          loadingDiv.innerHTML = `<p style="color: #10b981;">✅ ${matches.length} partidos cargados desde Firebase</p>`;
+          setTimeout(() => {
+            loadingDiv.style.display = "none";
+          }, 2000);
+        }
+        
+        // Activer le bouton de démarrage
+        startBtn.disabled = false;
+        startBtn.style.opacity = "1";
+      });
     });
     
   } catch (error) {
@@ -1290,7 +1300,13 @@ function renderMatches() {
     }
     
     const firstMatchDate = new Date(dayGroup.matches[0].date);
-    const deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
+    let deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
+    
+    // Appliquer le décalage de freeze si disponible
+    if (window.freezeDelaysCache && window.freezeDelaysCache[`day${dayIndex}`]) {
+      const delayHours = window.freezeDelaysCache[`day${dayIndex}`].hours || 0;
+      deadline = new Date(deadline.getTime() + (delayHours * 60 * 60 * 1000));
+    }
     
     // Compter les pronostics enregistrés (sauvegardés localement) pour cette journée
     let savedCount = 0;

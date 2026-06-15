@@ -1012,7 +1012,13 @@ function renderAdminMatches() {
     const dayName = dayGroup.name || `JORNADA ${dayIndex + 1}`;
     const isLocked = isDayLocked(dayGroup.matches, dayIndex);
     const firstMatchDate = new Date(dayGroup.matches[0].date);
-    const deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
+    let deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
+    
+    // Appliquer le décalage de freeze si disponible
+    if (window.freezeDelaysCache && window.freezeDelaysCache[`day${dayIndex}`]) {
+      const delayHours = window.freezeDelaysCache[`day${dayIndex}`].hours || 0;
+      deadline = new Date(deadline.getTime() + (delayHours * 60 * 60 * 1000));
+    }
     
     // Section de la journée
     const daySection = document.createElement("div");
