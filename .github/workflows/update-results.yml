@@ -66,10 +66,12 @@ jobs:
               console.log('⏰ Heure d\'exécution:', new Date().toISOString());
               
               // ÉTAPE 1: Récupérer TOUS les matchs terminés depuis l'API
+              // NOTE: Le plan gratuit ne supporte que les saisons 2022-2024
               console.log('📡 Récupération des matchs terminés depuis l\'API Football...');
-              console.log('🔗 URL API:', 'https://v3.football.api-sports.io/fixtures?league=1&season=2026&status=FT');
+              console.log('⚠️ Utilisation de la saison 2024 (limitation du plan gratuit)');
+              console.log('🔗 URL API:', 'https://v3.football.api-sports.io/fixtures?league=1&season=2024&status=FT');
               
-              const apiUrl = 'https://v3.football.api-sports.io/fixtures?league=1&season=2026&status=FT';
+              const apiUrl = 'https://v3.football.api-sports.io/fixtures?league=1&season=2024&status=FT';
               
               const apiResponse = await fetch(apiUrl, {
                 headers: {
@@ -87,7 +89,7 @@ jobs:
                 console.log('ℹ️ Aucun match terminé trouvé dans l\'API');
                 console.log('💡 Essayons de récupérer TOUS les matchs (pas seulement terminés)...');
                 
-                const allMatchesUrl = 'https://v3.football.api-sports.io/fixtures?league=1&season=2026';
+                const allMatchesUrl = 'https://v3.football.api-sports.io/fixtures?league=1&season=2024';
                 const allMatchesResponse = await fetch(allMatchesUrl, {
                   headers: {
                     'x-apisports-key': API_KEY
@@ -192,9 +194,8 @@ jobs:
                 }
               }
               
-              // Sauvegarder les matchs mis à jour
+              // Note: Pas besoin de sauvegarder car on a déjà fait des updates individuels
               if (updatedCount > 0) {
-                await db.ref('matches').set(matches);
                 console.log(`\n✅ Mise à jour terminée: ${updatedCount} match(s) mis à jour`);
               } else {
                 console.log('\nℹ️ Aucun nouveau résultat à mettre à jour');

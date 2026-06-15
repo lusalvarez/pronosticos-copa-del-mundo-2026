@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Update Direct</title>
+</head>
+<body>
+    <h1>Test de mise à jour Firebase</h1>
+    <button id="testBtn">Tester la mise à jour</button>
+    <pre id="log"></pre>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(msg) {
+            log.textContent += msg + '\n';
+            console.log(msg);
+        }
+        
+        document.getElementById('testBtn').addEventListener('click', async () => {
+            const participantId = prompt('Entrez votre ID participant:');
+            if (!participantId) return;
+            
+            const db = firebase.database();
+            
+            addLog('=== TEST DE MISE À JOUR ===');
+            addLog('1. Lecture des données actuelles...');
+            
+            const snapshot = await db.ref(`participants/${participantId}`).once('value');
+            const data = snapshot.val();
+            
+            if (!data) {
+                addLog('❌ Participant non trouvé');
+                return;
+            }
+            
+            // Compter les pronostics actuels
+            let currentCount = 0;
+            if (data.predictions) {
+                data.predictions.forEach(p => {
+                    if (p && p.prediction && p.prediction.home !== "" && p.prediction.away !== "") {
+                        currentCount++;
+                    }
+                });
+            }
+            
+            addLog(`✅ Pronostics actuels: ${currentCount}`);
+            addLog('');
+            addLog('2. Mise à jour des matchs 24 et 25 (journée 2)...');
+            
+            // Préparer les mises à jour UNIQUEMENT pour les matchs 24 et 25
+            const updates = {};
+            updates[`participants/${participantId}/predictions/24/prediction/home`] = "9";
+            updates[`participants/${participantId}/predictions/24/prediction/away`] = "9";
+            updates[`participants/${participantId}/predictions/25/prediction/home`] = "8";
+            updates[`participants/${participantId}/predictions/25/prediction/away`] = "8";
+            updates[`participants/${participantId}/lastUpdated`] = new Date().toISOString();
+            
+            addLog('📤 Envoi des mises à jour...');
+            await db.ref().update(updates);
+            addLog('✅ Mises à jour envoyées');
+            addLog('');
+            addLog('3. Vérification...');
+            
+            const snapshot2 = await db.ref(`participants/${participantId}`).once('value');
+            const data2 = snapshot2.val();
+            
+            let newCount = 0;
+            if (data2.predictions) {
+                data2.predictions.forEach(p => {
+                    if (p && p.prediction && p.prediction.home !== "" && p.prediction.away !== "") {
+                        newCount++;
+                    }
+                });
+            }
+            
+            addLog(`✅ Pronostics après mise à jour: ${newCount}`);
+            addLog('');
+            
+            if (newCount >= currentCount) {
+                addLog('✅✅✅ SUCCÈS ! Les pronostics précédents sont préservés !');
+            } else {
+                addLog('❌❌❌ ÉCHEC ! Des pronostics ont été perdus !');
+            }
+        });
+    </script>
+</body>
+</html>

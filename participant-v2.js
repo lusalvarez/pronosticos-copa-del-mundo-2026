@@ -757,24 +757,43 @@ function sendToFirebaseWithValidation(validPredictions, dayIndex) {
     const db = firebase.database();
     const participantId = normalizeParticipantId(participantName);
     
-    // Préparer les données pour Firebase (avec mot de passe haché)
-    const firebaseData = {
-      participantName: participantName,
-      passwordHash: participantPassword, // Mot de passe haché
-      lastUpdated: new Date().toISOString(),
-      predictions: matches.map((match, index) => ({
-        homeTeam: match.homeTeam,
-        awayTeam: match.awayTeam,
-        date: match.date,
-        stage: match.stage,
-        prediction: validPredictions[index] || { home: "", away: "", firstGoal: "" }
-      }))
-    };
+    console.log('🔍 [UPDATE] Mise à jour des pronostics pour:', participantId);
+    console.log('📊 [UPDATE] Journée:', dayIndex + 1);
+    console.log('📊 [UPDATE] Nombre de pronostics à mettre à jour:', Object.keys(validPredictions).length);
     
-    // Envoyer à Firebase
-    db.ref('participants/' + participantId).set(firebaseData)
+    // Préparer les mises à jour individuelles pour chaque match
+    const updates = {};
+    
+    // Mettre à jour les métadonnées
+    updates[`participants/${participantId}/participantName`] = participantName;
+    updates[`participants/${participantId}/passwordHash`] = participantPassword;
+    updates[`participants/${participantId}/lastUpdated`] = new Date().toISOString();
+    
+    // Mettre à jour UNIQUEMENT les pronostics de cette journée
+    Object.keys(validPredictions).forEach(index => {
+      const pred = validPredictions[index];
+      const match = matches[index];
+      
+      if (match) {
+        // Mettre à jour chaque propriété individuellement
+        updates[`participants/${participantId}/predictions/${index}/homeTeam`] = match.homeTeam;
+        updates[`participants/${participantId}/predictions/${index}/awayTeam`] = match.awayTeam;
+        updates[`participants/${participantId}/predictions/${index}/date`] = match.date;
+        updates[`participants/${participantId}/predictions/${index}/stage`] = match.stage;
+        updates[`participants/${participantId}/predictions/${index}/prediction/home`] = pred.home || "";
+        updates[`participants/${participantId}/predictions/${index}/prediction/away`] = pred.away || "";
+        updates[`participants/${participantId}/predictions/${index}/prediction/firstGoal`] = pred.firstGoal || "";
+        
+        console.log(`📝 [UPDATE] Match ${index}: ${pred.home}-${pred.away}`);
+      }
+    });
+    
+    console.log('📤 [UPDATE] Envoi de', Object.keys(updates).length, 'mises à jour à Firebase');
+    
+    // Utiliser update() au lieu de set() pour ne modifier QUE les chemins spécifiés
+    db.ref().update(updates)
       .then(() => {
-        console.log("✅ Pronósticos enviados a Firebase");
+        console.log("✅ [UPDATE] Pronósticos enviados a Firebase");
         
         // Compter uniquement les pronostics non vides
         let nonEmptyCount = 0;
