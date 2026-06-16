@@ -891,7 +891,7 @@ startBtn.addEventListener("click", async () => {
           predictions = {};
           sentPredictions = {};
           matches.forEach((match, index) => {
-            predictions[index] = { home: "", away: "" };
+            predictions[index] = { home: "", away: "", firstGoal: "" };
           });
           // Nettoyer Firebase pour ce participant
           await db.ref('participants/' + participantId).remove();
@@ -915,7 +915,7 @@ startBtn.addEventListener("click", async () => {
         // Initialiser les prédictions manquantes
         matches.forEach((match, index) => {
           if (!predictions[index]) {
-            predictions[index] = { home: "", away: "" };
+            predictions[index] = { home: "", away: "", firstGoal: "" };
           }
         });
         
@@ -1404,7 +1404,7 @@ function renderMatches() {
               type="number"
               min="0"
               max="99"
-              value="${prediction.home}"
+              value="${prediction.home !== null && prediction.home !== undefined && prediction.home !== '' ? prediction.home : ''}"
               data-index="${index}"
               data-side="home"
               placeholder="Marcador"
@@ -1418,7 +1418,7 @@ function renderMatches() {
               type="number"
               min="0"
               max="99"
-              value="${prediction.away}"
+              value="${prediction.away !== null && prediction.away !== undefined && prediction.away !== '' ? prediction.away : ''}"
               data-index="${index}"
               data-side="away"
               placeholder="Marcador"
@@ -1581,7 +1581,8 @@ function renderMatches() {
 function updateStats() {
   const total = matches.length;
   const completed = Object.values(predictions).filter(
-    (p) => p.home !== "" && p.away !== ""
+    (p) => p.home !== "" && p.home !== null && p.home !== undefined &&
+           p.away !== "" && p.away !== null && p.away !== undefined
   ).length;
   const remaining = total - completed;
 
