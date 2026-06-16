@@ -1617,6 +1617,10 @@ function renderMatches() {
       let completedCount = 0;
       let totalCount = currentDayGroup.matches.length;
       
+      // DEBUG: Afficher predictions[26] et predictions[27] AVANT traitement
+      console.log("🔍 [PREP] predictions[26]:", JSON.stringify(predictions[26]));
+      console.log("🔍 [PREP] predictions[27]:", JSON.stringify(predictions[27]));
+      
       currentDayGroup.matches.forEach(match => {
         const index = match.originalIndex;
         const pred = predictions[index];
