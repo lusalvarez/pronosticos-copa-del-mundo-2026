@@ -783,14 +783,28 @@ function sendToFirebaseWithValidation(validPredictions, dayIndex) {
       const match = matches[index];
       
       if (match) {
+        // DEBUG: Afficher pred AVANT traitement
+        if (index === 26 || index === 27) {
+          console.log(`🔍 [DEBUG] Match ${index} pred AVANT:`, JSON.stringify(pred), `types: home=${typeof pred.home}, away=${typeof pred.away}`);
+        }
+        
         // Mettre à jour chaque propriété individuellement
         updates[`participants/${participantId}/predictions/${index}/homeTeam`] = match.homeTeam;
         updates[`participants/${participantId}/predictions/${index}/awayTeam`] = match.awayTeam;
         updates[`participants/${participantId}/predictions/${index}/date`] = match.date;
         updates[`participants/${participantId}/predictions/${index}/stage`] = match.stage;
-        updates[`participants/${participantId}/predictions/${index}/prediction/home`] = pred.home !== null && pred.home !== undefined ? pred.home : "";
-        updates[`participants/${participantId}/predictions/${index}/prediction/away`] = pred.away !== null && pred.away !== undefined ? pred.away : "";
+        
+        const homeValue = pred.home !== null && pred.home !== undefined ? pred.home : "";
+        const awayValue = pred.away !== null && pred.away !== undefined ? pred.away : "";
+        
+        updates[`participants/${participantId}/predictions/${index}/prediction/home`] = homeValue;
+        updates[`participants/${participantId}/predictions/${index}/prediction/away`] = awayValue;
         updates[`participants/${participantId}/predictions/${index}/prediction/firstGoal`] = pred.firstGoal || "";
+        
+        // DEBUG: Afficher valeurs APRÈS traitement
+        if (index === 26 || index === 27) {
+          console.log(`🔍 [DEBUG] Match ${index} APRÈS: home=${homeValue} (${typeof homeValue}), away=${awayValue} (${typeof awayValue})`);
+        }
         
         console.log(`📝 [UPDATE] Match ${index}: ${pred.home}-${pred.away}`);
       }
