@@ -522,6 +522,14 @@ function sendToFirebase() {
       }))
     };
     
+    // DEBUG: Afficher les prédictions envoyées
+    console.log("📤 Données envoyées à Firebase:");
+    firebaseData.predictions.forEach((p, i) => {
+      if (p.prediction.home !== "" || p.prediction.away !== "") {
+        console.log(`  Match ${i}: ${p.homeTeam} vs ${p.awayTeam} = ${p.prediction.home}-${p.prediction.away}`);
+      }
+    });
+    
     // Envoyer à Firebase
     db.ref('participants/' + participantId).set(firebaseData)
       .then(() => {
@@ -920,7 +928,7 @@ startBtn.addEventListener("click", async () => {
           predictions = {};
           sentPredictions = {};
           matches.forEach((match, index) => {
-            predictions[index] = { home: "", away: "" };
+            predictions[index] = { home: "", away: "", firstGoal: "" };
           });
           // Nettoyer Firebase pour ce participant
           await db.ref('participants/' + participantId).remove();
@@ -934,6 +942,10 @@ startBtn.addEventListener("click", async () => {
           if (existingData.predictions) {
             existingData.predictions.forEach((pred, index) => {
               predictions[index] = pred.prediction;
+              // DEBUG: Afficher les prédictions chargées
+              if (pred.prediction && (pred.prediction.home !== "" || pred.prediction.away !== "")) {
+                console.log(`📥 Match ${index} chargé: ${pred.homeTeam} vs ${pred.awayTeam} = ${pred.prediction.home}-${pred.prediction.away}`);
+              }
             });
           }
           
@@ -944,7 +956,7 @@ startBtn.addEventListener("click", async () => {
         // Initialiser les prédictions manquantes
         matches.forEach((match, index) => {
           if (!predictions[index]) {
-            predictions[index] = { home: "", away: "" };
+            predictions[index] = { home: "", away: "", firstGoal: "" };
           }
         });
         
@@ -1458,7 +1470,7 @@ function renderMatches() {
               type="number"
               min="0"
               max="99"
-              value="${prediction.home}"
+              value="${prediction.home !== null && prediction.home !== undefined && prediction.home !== '' ? prediction.home : ''}"
               data-index="${index}"
               data-side="home"
               placeholder="Marcador"
@@ -1472,7 +1484,7 @@ function renderMatches() {
               type="number"
               min="0"
               max="99"
-              value="${prediction.away}"
+              value="${prediction.away !== null && prediction.away !== undefined && prediction.away !== '' ? prediction.away : ''}"
               data-index="${index}"
               data-side="away"
               placeholder="Marcador"
@@ -1635,7 +1647,8 @@ function renderMatches() {
 function updateStats() {
   const total = matches.length;
   const completed = Object.values(predictions).filter(
-    (p) => p.home !== "" && p.away !== ""
+    (p) => p.home !== "" && p.home !== null && p.home !== undefined &&
+           p.away !== "" && p.away !== null && p.away !== undefined
   ).length;
   const remaining = total - completed;
 
