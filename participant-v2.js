@@ -1607,7 +1607,13 @@ function renderMatches() {
         const index = match.originalIndex;
         const pred = predictions[index];
         
-        if (pred && pred.home !== "" && pred.away !== "") {
+        // DEBUG: Afficher les valeurs avant validation
+        if (pred && (pred.home !== "" || pred.away !== "")) {
+          console.log(`🔍 Match ${index} avant envoi: home=${pred.home} (${typeof pred.home}), away=${pred.away} (${typeof pred.away})`);
+        }
+        
+        if (pred && pred.home !== "" && pred.home !== null && pred.home !== undefined &&
+            pred.away !== "" && pred.away !== null && pred.away !== undefined) {
           completedCount++;
           dayPredictions[index] = {
             home: pred.home,
