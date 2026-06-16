@@ -1218,7 +1218,10 @@ function renderAdminMatches() {
         const isFromFirebase = firebaseParticipants.has(participant.name.toLowerCase());
         
         // Vérifier si ce pronostic SPÉCIFIQUE a été envoyé (prediction existe et n'est pas vide)
-        const predictionSent = isFromFirebase && prediction.home !== "" && prediction.away !== "";
+        // Vérifier explicitement pour gérer le cas où la valeur est 0
+        const hasHomePrediction = prediction.home !== "" && prediction.home !== null && prediction.home !== undefined;
+        const hasAwayPrediction = prediction.away !== "" && prediction.away !== null && prediction.away !== undefined;
+        const predictionSent = isFromFirebase && hasHomePrediction && hasAwayPrediction;
         
         const isDisabled = predictionSent ? "disabled" : "";
         const disabledStyle = predictionSent ? "opacity: 0.6; cursor: not-allowed;" : "";
@@ -1227,8 +1230,8 @@ function renderAdminMatches() {
         const showPredictions = isLocked;
         
         // Afficher les valeurs ou un cadenas selon le freeze
-        const homeValue = !showPredictions && prediction.home !== "" ? "🔒" : prediction.home;
-        const awayValue = !showPredictions && prediction.away !== "" ? "🔒" : prediction.away;
+        const homeValue = !showPredictions && hasHomePrediction ? "🔒" : prediction.home;
+        const awayValue = !showPredictions && hasAwayPrediction ? "🔒" : prediction.away;
         const firstGoalDisplay = !showPredictions && prediction.firstGoal ?
           "🔒" :
           (prediction.firstGoal === "home" ? "Local" : prediction.firstGoal === "away" ? "Visitante" : "-");

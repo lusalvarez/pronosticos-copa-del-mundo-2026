@@ -398,8 +398,11 @@ function renderPublicMatches() {
         row.className = "prediction-row";
         
         // Afficher les valeurs ou un cadenas selon le freeze
-        const homeValue = !showPredictions && prediction.home !== "" ? "🔒" : prediction.home;
-        const awayValue = !showPredictions && prediction.away !== "" ? "🔒" : prediction.away;
+        // Vérifier explicitement pour gérer le cas où la valeur est 0
+        const hasHomePrediction = prediction.home !== "" && prediction.home !== null && prediction.home !== undefined;
+        const hasAwayPrediction = prediction.away !== "" && prediction.away !== null && prediction.away !== undefined;
+        const homeValue = !showPredictions && hasHomePrediction ? "🔒" : prediction.home;
+        const awayValue = !showPredictions && hasAwayPrediction ? "🔒" : prediction.away;
         
         let firstGoalDisplay = '';
         if (showPredictions && prediction.firstGoal) {
@@ -417,8 +420,8 @@ function renderPublicMatches() {
             <strong>${participant.name}</strong>
             ${predictionSent ? '<span class="small-text" style="color: #10b981;">✓ Enviado</span>' : ''}
           </div>
-          <div>${showPredictions ? (prediction.home === "" || prediction.home === null || prediction.home === undefined ? "-" : prediction.home) : (homeValue || "-")}</div>
-          <div>${showPredictions ? (prediction.away === "" || prediction.away === null || prediction.away === undefined ? "-" : prediction.away) : (awayValue || "-")}</div>
+          <div>${showPredictions ? (prediction.home === "" || prediction.home === null || prediction.home === undefined ? "-" : prediction.home) : (hasHomePrediction ? homeValue : "-")}</div>
+          <div>${showPredictions ? (prediction.away === "" || prediction.away === null || prediction.away === undefined ? "-" : prediction.away) : (hasAwayPrediction ? awayValue : "-")}</div>
           <div>
             <span class="small-text">${firstGoalDisplay || '-'}</span>
           </div>
