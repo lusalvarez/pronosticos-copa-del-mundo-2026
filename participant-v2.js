@@ -942,9 +942,9 @@ startBtn.addEventListener("click", async () => {
           if (existingData.predictions) {
             existingData.predictions.forEach((pred, index) => {
               predictions[index] = pred.prediction;
-              // DEBUG: Afficher les prédictions chargées
+              // DEBUG: Afficher les prédictions chargées avec types
               if (pred.prediction && (pred.prediction.home !== "" || pred.prediction.away !== "")) {
-                console.log(`📥 Match ${index} chargé: ${pred.homeTeam} vs ${pred.awayTeam} = ${pred.prediction.home}-${pred.prediction.away}`);
+                console.log(`📥 Match ${index} chargé: ${pred.homeTeam} vs ${pred.awayTeam} = ${pred.prediction.home}-${pred.prediction.away} (types: ${typeof pred.prediction.home}, ${typeof pred.prediction.away})`);
               }
             });
           }
