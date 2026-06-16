@@ -642,7 +642,7 @@ function showConfirmationModal(dayGroup, dayPredictions, completedCount, totalCo
   dayGroup.matches.forEach(match => {
     const index = match.originalIndex;
     const pred = dayPredictions[index];
-    const isEmpty = !pred || pred.home === "" || pred.away === "";
+    const isEmpty = !pred || pred.home === "" || pred.home === null || pred.home === undefined || pred.away === "" || pred.away === null || pred.away === undefined;
     const firstGoalTeam =
       pred?.firstGoal === "home"
         ? `⚽ ${match.homeTeam}`
@@ -788,8 +788,8 @@ function sendToFirebaseWithValidation(validPredictions, dayIndex) {
         updates[`participants/${participantId}/predictions/${index}/awayTeam`] = match.awayTeam;
         updates[`participants/${participantId}/predictions/${index}/date`] = match.date;
         updates[`participants/${participantId}/predictions/${index}/stage`] = match.stage;
-        updates[`participants/${participantId}/predictions/${index}/prediction/home`] = pred.home || "";
-        updates[`participants/${participantId}/predictions/${index}/prediction/away`] = pred.away || "";
+        updates[`participants/${participantId}/predictions/${index}/prediction/home`] = pred.home !== null && pred.home !== undefined ? pred.home : "";
+        updates[`participants/${participantId}/predictions/${index}/prediction/away`] = pred.away !== null && pred.away !== undefined ? pred.away : "";
         updates[`participants/${participantId}/predictions/${index}/prediction/firstGoal`] = pred.firstGoal || "";
         
         console.log(`📝 [UPDATE] Match ${index}: ${pred.home}-${pred.away}`);
