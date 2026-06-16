@@ -624,7 +624,7 @@ function showConfirmationModal(dayGroup, dayPredictions, completedCount, totalCo
   dayGroup.matches.forEach(match => {
     const index = match.originalIndex;
     const pred = dayPredictions[index];
-    const isEmpty = !pred || pred.home === "" || pred.away === "";
+    const isEmpty = !pred || pred.home === "" || pred.home === null || pred.home === undefined || pred.away === "" || pred.away === null || pred.away === undefined;
     const firstGoalTeam =
       pred?.firstGoal === "home"
         ? `⚽ ${match.homeTeam}`
@@ -769,7 +769,7 @@ function sendToFirebaseWithValidation(validPredictions, dayIndex) {
         // Compter uniquement les pronostics non vides
         let nonEmptyCount = 0;
         Object.values(validPredictions).forEach(pred => {
-          if (pred && pred.home !== "" && pred.away !== "") {
+          if (pred && pred.home !== "" && pred.home !== null && pred.home !== undefined && pred.away !== "" && pred.away !== null && pred.away !== undefined) {
             nonEmptyCount++;
           }
         });
@@ -1277,7 +1277,7 @@ function renderMatches() {
     let savedCount = 0;
     dayGroup.matches.forEach(match => {
       const pred = predictions[match.originalIndex];
-      if (pred && pred.home !== "" && pred.away !== "") {
+      if (pred && pred.home !== "" && pred.home !== null && pred.home !== undefined && pred.away !== "" && pred.away !== null && pred.away !== undefined) {
         savedCount++;
       }
     });
@@ -1541,7 +1541,7 @@ function renderMatches() {
         const index = match.originalIndex;
         const pred = predictions[index];
         
-        if (pred && pred.home !== "" && pred.away !== "") {
+        if (pred && pred.home !== "" && pred.home !== null && pred.home !== undefined && pred.away !== "" && pred.away !== null && pred.away !== undefined) {
           completedCount++;
           dayPredictions[index] = {
             home: pred.home,

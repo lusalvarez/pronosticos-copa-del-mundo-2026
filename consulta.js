@@ -408,8 +408,8 @@ function renderPublicMatches() {
             <strong>${participant.name}</strong>
             ${predictionSent ? '<span class="small-text" style="color: #10b981;">✓ Enviado</span>' : ''}
           </div>
-          <div>${showPredictions ? (prediction.home === "" ? "-" : prediction.home) : (homeValue || "-")}</div>
-          <div>${showPredictions ? (prediction.away === "" ? "-" : prediction.away) : (awayValue || "-")}</div>
+          <div>${showPredictions ? (prediction.home === "" || prediction.home === null || prediction.home === undefined ? "-" : prediction.home) : (homeValue || "-")}</div>
+          <div>${showPredictions ? (prediction.away === "" || prediction.away === null || prediction.away === undefined ? "-" : prediction.away) : (awayValue || "-")}</div>
           <div>
             <span class="small-text">${firstGoalDisplay || '-'}</span>
           </div>
