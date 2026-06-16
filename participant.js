@@ -757,9 +757,18 @@ function sendToFirebaseWithValidation(validPredictions, dayIndex) {
         awayTeam: match.awayTeam,
         date: match.date,
         stage: match.stage,
-        prediction: validPredictions[index] || { home: "", away: "", firstGoal: "" }
+        // Utiliser validPredictions si disponible, sinon garder les prédictions existantes
+        prediction: validPredictions[index] || predictions[index] || { home: "", away: "", firstGoal: "" }
       }))
     };
+    
+    // DEBUG: Afficher les prédictions envoyées
+    console.log("📤 Données envoyées à Firebase:");
+    firebaseData.predictions.forEach((p, i) => {
+      if (p.prediction.home !== "" || p.prediction.away !== "") {
+        console.log(`  Match ${i}: ${p.homeTeam} vs ${p.awayTeam} = ${p.prediction.home}-${p.prediction.away}`);
+      }
+    });
     
     // Envoyer à Firebase
     db.ref('participants/' + participantId).set(firebaseData)
@@ -905,6 +914,10 @@ startBtn.addEventListener("click", async () => {
           if (existingData.predictions) {
             existingData.predictions.forEach((pred, index) => {
               predictions[index] = pred.prediction;
+              // DEBUG: Afficher les prédictions chargées
+              if (pred.prediction && (pred.prediction.home !== "" || pred.prediction.away !== "")) {
+                console.log(`📥 Match ${index} chargé: ${pred.homeTeam} vs ${pred.awayTeam} = ${pred.prediction.home}-${pred.prediction.away}`);
+              }
             });
           }
           
