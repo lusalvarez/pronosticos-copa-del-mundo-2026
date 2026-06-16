@@ -217,7 +217,7 @@ function getRanking() {
         correctFirstGoals,
       };
     })
-    .sort((a, b) => b.totalPoints - a.totalPoints || b.exactScores - a.exactScores || b.correctFirstGoals - a.correctFirstGoals || a.name.localeCompare(b.name));
+    .sort((a, b) => b.totalPoints - a.totalPoints || b.correctFirstGoals - a.correctFirstGoals || b.exactScores - a.exactScores || a.name.localeCompare(b.name));
 }
 
 function renderRanking() {
