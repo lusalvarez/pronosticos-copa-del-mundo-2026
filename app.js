@@ -599,7 +599,7 @@ async function delayFreeze(dayIndex) {
   let currentDelayHours = 0;
   try {
     if (typeof firebase !== 'undefined' && firebase.database) {
-      const delaySnapshot = await database.ref(`freezeDelays/day${dayIndex}`).once('value');
+      const delaySnapshot = await database.ref(`freezeDelays/day${dayIndex + 1}`).once('value');
       if (delaySnapshot.exists()) {
         currentDelayHours = delaySnapshot.val().hours || 0;
       }
@@ -672,7 +672,7 @@ async function delayFreeze(dayIndex) {
   try {
     // Sauvegarder le décalage dans Firebase (PAS les dates des matchs!)
     if (typeof firebase !== 'undefined' && firebase.database) {
-      await database.ref(`freezeDelays/day${dayIndex}`).set({
+      await database.ref(`freezeDelays/day${dayIndex + 1}`).set({
         hours: newTotalDelayHours,
         dayName: dayName,
         updatedAt: new Date().toISOString(),
@@ -1037,8 +1037,8 @@ function renderAdminMatches() {
     let deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
     
     // Appliquer le décalage de freeze si disponible
-    if (window.freezeDelaysCache && window.freezeDelaysCache[`day${dayIndex}`]) {
-      const delayHours = window.freezeDelaysCache[`day${dayIndex}`].hours || 0;
+    if (window.freezeDelaysCache && window.freezeDelaysCache[`day${dayIndex + 1}`]) {
+      const delayHours = window.freezeDelaysCache[`day${dayIndex + 1}`].hours || 0;
       deadline = new Date(deadline.getTime() + (delayHours * 60 * 60 * 1000));
     }
     
