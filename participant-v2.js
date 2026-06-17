@@ -1259,12 +1259,20 @@ function isDayLocked(dayMatches) {
   console.log(`🔍 isDayLocked debug - dayNumber: ${dayNumber}, dayKey: ${dayKey}, firstMatch:`, firstMatch);
   
   // Récupérer le timestamp de freeze pour cette journée
-  const freezeTimestamp = FREEZE_TIMESTAMPS[dayKey];
+  let freezeTimestamp = FREEZE_TIMESTAMPS[dayKey];
   console.log(`🔍 freezeTimestamp for ${dayKey}:`, freezeTimestamp);
   
   if (!freezeTimestamp) {
     console.log(`⚠️ No freeze timestamp found for ${dayKey}`);
     return false;
+  }
+  
+  // Appliquer le décalage de freeze si disponible
+  if (window.freezeDelaysCache && window.freezeDelaysCache[dayKey]) {
+    const delayHours = window.freezeDelaysCache[dayKey].hours || 0;
+    const delayMs = delayHours * 60 * 60 * 1000;
+    freezeTimestamp = freezeTimestamp + delayMs;
+    console.log(`⏰ Décalage appliqué: +${delayHours}h → nouveau freeze: ${freezeTimestamp}`);
   }
   
   // Comparer avec l'heure actuelle (en millisecondes UTC)
