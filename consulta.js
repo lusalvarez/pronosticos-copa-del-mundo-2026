@@ -131,8 +131,16 @@ function isDayLocked(dayMatches) {
   const dayKey = `day${dayNumber}`;
   
   // Récupérer le timestamp de freeze pour cette journée
-  const freezeTimestamp = FREEZE_TIMESTAMPS[dayKey];
+  let freezeTimestamp = FREEZE_TIMESTAMPS[dayKey];
   if (!freezeTimestamp) return false;
+  
+  // Appliquer le décalage de freeze si disponible
+  if (window.freezeDelaysCache && window.freezeDelaysCache[dayKey]) {
+    const delayHours = window.freezeDelaysCache[dayKey].hours || 0;
+    const delayMs = delayHours * 60 * 60 * 1000;
+    freezeTimestamp = freezeTimestamp + delayMs;
+    console.log(`⏰ [consulta.js] Décalage appliqué pour ${dayKey}: +${delayHours}h → nouveau freeze: ${freezeTimestamp}`);
+  }
   
   // Comparer avec l'heure actuelle (en millisecondes UTC)
   const now = Date.now();
@@ -459,13 +467,36 @@ function listenToFirebaseUpdates() {
     
     console.log("🔄 Cargando datos desde Firebase...");
     
-    // Afficher un message de chargement
-    rankingTable.innerHTML = '<p class="empty-state">⏳ Cargando clasificación...</p>';
-    publicMatches.innerHTML = '<p class="empty-state">⏳ Cargando partidos...</p>';
+    // IMPORTANT: Charger les décalages de freeze AVANT de configurer les listeners
+    db.ref('freezeDelays').once('value', (delaysSnapshot) => {
+      if (delaysSnapshot.exists()) {
+        window.freezeDelaysCache = delaysSnapshot.val();
+        console.log('✅ [consulta.js] Décalages de freeze chargés:', window.freezeDelaysCache);
+      } else {
+        window.freezeDelaysCache = {};
+        console.log('ℹ️ [consulta.js] Aucun décalage de freeze configuré');
+      }
+      
+      // Maintenant qu'on a les freeze delays, configurer les listeners
+      setupFirebaseListeners();
+    }).catch(error => {
+      console.error('❌ [consulta.js] Erreur lors du chargement des décalages:', error);
+      window.freezeDelaysCache = {};
+      // Continuer quand même
+      setupFirebaseListeners();
+    });
     
-    // Timeout de sécurité
-    let dataLoaded = false;
-    setTimeout(() => {
+    // Fonction pour configurer les listeners Firebase
+    function setupFirebaseListeners() {
+      console.log("🔄 Configuration des listeners Firebase...");
+      
+      // Afficher un message de chargement
+      rankingTable.innerHTML = '<p class="empty-state">⏳ Cargando clasificación...</p>';
+      publicMatches.innerHTML = '<p class="empty-state">⏳ Cargando partidos...</p>';
+      
+      // Timeout de sécurité
+      let dataLoaded = false;
+      setTimeout(() => {
       if (!dataLoaded) {
         console.log("⚠️ Timeout: Los datos tardan en cargar");
         if (state.matches.length === 0) {
@@ -475,10 +506,10 @@ function listenToFirebaseUpdates() {
           rankingTable.innerHTML = '<p class="empty-state" style="color: #f59e0b;">⚠️ No hay participantes todavía.</p>';
         }
       }
-    }, 5000);
-    
-    // Écouter les matchs depuis Firebase
-    matchesRef.on('value', (snapshot) => {
+      }, 5000);
+      
+      // Écouter les matchs depuis Firebase
+      matchesRef.on('value', (snapshot) => {
       const firebaseMatches = snapshot.val();
       
       if (!firebaseMatches) {
@@ -511,11 +542,11 @@ function listenToFirebaseUpdates() {
       state.matches = matchesArray;
       dataLoaded = true;
       console.log(`✅ ${matchesArray.length} partidos cargados`);
-      render();
-    });
-    
-    // Écouter les participants depuis Firebase
-    participantsRef.on('value', (snapshot) => {
+        render();
+      });
+      
+      // Écouter les participants depuis Firebase
+      participantsRef.on('value', (snapshot) => {
       const firebaseData = snapshot.val();
       
       if (!firebaseData) {
@@ -568,8 +599,9 @@ function listenToFirebaseUpdates() {
       
       dataLoaded = true;
       console.log(`✅ ${state.participants.length} participantes cargados`);
-      render();
-    });
+        render();
+      });
+    }
     
   } catch (error) {
     console.error("❌ Error al cargar datos de Firebase:", error);
