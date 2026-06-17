@@ -636,13 +636,35 @@ async function delayFreeze(dayIndex) {
   const currentDeadline = new Date(baseDeadline.getTime() + (currentDelayHours * 60 * 60 * 1000));
   const newDeadline = new Date(baseDeadline.getTime() + (newTotalDelayHours * 60 * 60 * 1000));
   
+  // Formater les heures pour France et Colombie
+  const formatTimeForTimezone = (date, timezone, label) => {
+    return `${label}: ${date.toLocaleString('fr-FR', {
+      timeZone: timezone,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })}`;
+  };
+  
+  const currentFrance = formatTimeForTimezone(currentDeadline, 'Europe/Paris', '🇫🇷 France');
+  const currentColombia = formatTimeForTimezone(currentDeadline, 'America/Bogota', '🇨🇴 Colombie');
+  const newFrance = formatTimeForTimezone(newDeadline, 'Europe/Paris', '🇫🇷 France');
+  const newColombia = formatTimeForTimezone(newDeadline, 'America/Bogota', '🇨🇴 Colombie');
+  
   const confirm = window.confirm(
     `⏰ Confirmer le décalage du freeze?\n\n` +
     `Journée: ${dayName}\n` +
     `Premier match: ${formatDate(firstMatchDate.toISOString())} (INCHANGÉ)\n\n` +
-    `Deadline actuelle: ${formatDate(currentDeadline.toISOString())}\n` +
-    `Nouvelle deadline: ${formatDate(newDeadline.toISOString())}\n\n` +
-    `Décalage total: ${newTotalDelayHours > 0 ? '+' : ''}${newTotalDelayHours}h par rapport aux 24h standard`
+    `📍 FREEZE ACTUEL:\n` +
+    `${currentFrance}\n` +
+    `${currentColombia}\n\n` +
+    `📍 NOUVEAU FREEZE:\n` +
+    `${newFrance}\n` +
+    `${newColombia}\n\n` +
+    `Décalage: ${newTotalDelayHours > 0 ? '+' : ''}${newTotalDelayHours}h par rapport aux 24h standard`
   );
   
   if (!confirm) return;
