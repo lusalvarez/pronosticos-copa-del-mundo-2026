@@ -589,11 +589,8 @@ async function delayFreeze(dayIndex) {
   const dayGroup = dayGroups[dayIndex];
   const dayName = dayGroup.name || `JORNADA ${dayIndex + 1}`;
   
-  // Vérifier si la journée est déjà freezée
-  if (isDayLocked(dayGroup.matches, dayIndex)) {
-    alert(`❌ La ${dayName} est déjà freezée.\n\nImpossible de décaler le freeze après l'heure limite.`);
-    return;
-  }
+  // Note: On permet la configuration même si la journée est verrouillée
+  // car le verrouillage peut être dû à l'absence de freeze delay configuré
   
   // Récupérer le décalage actuel depuis Firebase
   let currentDelayHours = 0;
@@ -1085,25 +1082,23 @@ function renderAdminMatches() {
     whatsappBtn.addEventListener("click", () => copyWhatsAppSummary(dayIndex));
     dayHeader.appendChild(whatsappBtn);
     
-    // Ajouter un bouton pour décaler le freeze (seulement si pas encore freezé)
-    if (!isLocked) {
-      const delayFreezeBtn = document.createElement("button");
-      delayFreezeBtn.textContent = "⏰ Décaler freeze";
-      delayFreezeBtn.style.cssText = `
-        margin-top: 1rem;
-        margin-left: 1rem;
-        padding: 0.75rem 1.5rem;
-        background: #f59e0b;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 0.95rem;
-      `;
-      delayFreezeBtn.addEventListener("click", () => delayFreeze(dayIndex));
-      dayHeader.appendChild(delayFreezeBtn);
-    }
+    // Ajouter un bouton pour décaler le freeze (toujours visible pour permettre la configuration)
+    const delayFreezeBtn = document.createElement("button");
+    delayFreezeBtn.textContent = isLocked ? "⏰ Configurer freeze" : "⏰ Décaler freeze";
+    delayFreezeBtn.style.cssText = `
+      margin-top: 1rem;
+      margin-left: 1rem;
+      padding: 0.75rem 1.5rem;
+      background: ${isLocked ? '#ef4444' : '#f59e0b'};
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.95rem;
+    `;
+    delayFreezeBtn.addEventListener("click", () => delayFreeze(dayIndex));
+    dayHeader.appendChild(delayFreezeBtn);
     
     daySection.appendChild(dayHeader);
     
