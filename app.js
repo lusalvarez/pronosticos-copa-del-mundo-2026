@@ -551,9 +551,10 @@ function isDayLocked(dayMatches, dayIndex = null) {
   let deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
   
   // Appliquer le décalage si disponible (chargé de manière synchrone depuis le cache)
-  if (dayIndex !== null && window.freezeDelaysCache && window.freezeDelaysCache[`day${dayIndex}`]) {
-    const delayHours = window.freezeDelaysCache[`day${dayIndex}`].hours || 0;
+  if (dayIndex !== null && window.freezeDelaysCache && window.freezeDelaysCache[`day${dayIndex + 1}`]) {
+    const delayHours = window.freezeDelaysCache[`day${dayIndex + 1}`].hours || 0;
     deadline = new Date(deadline.getTime() + (delayHours * 60 * 60 * 1000));
+    console.log(`⏰ [app.js isDayLocked] Décalage appliqué pour day${dayIndex + 1}: +${delayHours}h`);
   }
   
   return now >= deadline;
