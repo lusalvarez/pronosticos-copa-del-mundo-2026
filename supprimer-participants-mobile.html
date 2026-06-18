@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Supprimer Participants</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            padding: 15px;
+            background: #f5f5f5;
+            font-size: 16px;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 22px;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border-left: 4px solid #2196F3;
+            font-size: 14px;
+        }
+        .participant-list {
+            margin: 15px 0;
+        }
+        .participant-item {
+            padding: 12px;
+            margin: 8px 0;
+            background: #f8f9fa;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 3px solid #007bff;
+        }
+        .participant-item.selected {
+            background: #ffe6e6;
+            border-left-color: #dc3545;
+        }
+        .participant-name {
+            font-weight: 500;
+            flex: 1;
+        }
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 8px 0;
+            font-weight: 600;
+        }
+        .scan-btn {
+            background: #007bff;
+            color: white;
+        }
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+        .delete-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 5px;
+            display: none;
+            font-size: 14px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .count {
+            font-size: 14px;
+            color: #666;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗑️ Supprimer Participants</h1>
+        
+        <div class="info">
+            <strong>📱 Mode Mobile</strong><br>
+            Cochez les participants à supprimer, puis cliquez sur "Supprimer".
+        </div>
+
+        <button class="scan-btn" onclick="scanParticipants()">🔍 Scanner les participants</button>
+
+        <div id="participantsList"></div>
+        
+        <div class="count" id="selectedCount" style="display:none;">
+            <strong>Sélectionnés: <span id="count">0</span></strong>
+        </div>
+
+        <button class="delete-btn" id="deleteBtn" onclick="deleteSelected()" disabled style="display:none;">
+            🗑️ Supprimer les participants sélectionnés
+        </button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = "pronostics-coupe-du-monde-v1";
+        let participants = [];
+        let selectedIds = new Set();
+
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = type;
+            resultDiv.style.display = 'block';
+        }
+
+        function updateSelectedCount() {
+            const countSpan = document.getElementById('count');
+            const countDiv = document.getElementById('selectedCount');
+            const deleteBtn = document.getElementById('deleteBtn');
+            
+            countSpan.textContent = selectedIds.size;
+            
+            if (selectedIds.size > 0) {
+                countDiv.style.display = 'block';
+                deleteBtn.style.display = 'block';
+                deleteBtn.disabled = false;
+            } else {
+                countDiv.style.display = 'none';
+                deleteBtn.style.display = 'none';
+                deleteBtn.disabled = true;
+            }
+        }
+
+        function toggleParticipant(id) {
+            if (selectedIds.has(id)) {
+                selectedIds.delete(id);
+            } else {
+                selectedIds.add(id);
+            }
+            
+            // Mettre à jour l'affichage
+            const item = document.querySelector(`[data-id="${id}"]`);
+            if (item) {
+                if (selectedIds.has(id)) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            }
+            
+            updateSelectedCount();
+        }
+
+        function scanParticipants() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                
+                if (!saved) {
+                    showResult('❌ Aucune donnée trouvée', 'error');
+                    return;
+                }
+
+                const data = JSON.parse(saved);
+                participants = data.participants || [];
+
+                if (participants.length === 0) {
+                    showResult('❌ Aucun participant trouvé', 'error');
+                    return;
+                }
+
+                // Afficher la liste
+                const listDiv = document.getElementById('participantsList');
+                listDiv.innerHTML = '<h3 style="margin: 15px 0 10px 0; font-size: 16px;">Participants trouvés:</h3>';
+                
+                participants.forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = 'participant-item';
+                    item.setAttribute('data-id', p.id);
+                    item.onclick = () => toggleParticipant(p.id);
+                    
+                    item.innerHTML = `
+                        <span class="participant-name">${p.name}</span>
+                        <input type="checkbox" class="checkbox" ${selectedIds.has(p.id) ? 'checked' : ''}>
+                    `;
+                    
+                    listDiv.appendChild(item);
+                });
+
+                showResult(`✅ ${participants.length} participant(s) trouvé(s)`, 'success');
+                updateSelectedCount();
+
+            } catch (error) {
+                console.error('Erreur:', error);
+                showResult(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        function deleteSelected() {
+            if (selectedIds.size === 0) {
+                showResult('❌ Aucun participant sélectionné', 'error');
+                return;
+            }
+
+            const namesToDelete = participants
+                .filter(p => selectedIds.has(p.id))
+                .map(p => p.name);
+
+            const confirmed = confirm(
+                `⚠️ CONFIRMATION\n\n` +
+                `Supprimer ${selectedIds.size} participant(s)?\n\n` +
+                namesToDelete.join('\n') + '\n\n' +
+                `Cette action est irréversible.`
+            );
+
+            if (!confirmed) {
+                showResult('❌ Suppression annulée', 'error');
+                return;
+            }
+
+            try {
+                const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                
+                // Supprimer les participants
+                data.participants = data.participants.filter(p => !selectedIds.has(p.id));
+                
+                // Supprimer leurs pronostics
+                let predictionsDeleted = 0;
+                data.matches.forEach(match => {
+                    selectedIds.forEach(id => {
+                        if (match.predictions[id]) {
+                            delete match.predictions[id];
+                            predictionsDeleted++;
+                        }
+                    });
+                });
+                
+                // Sauvegarder
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                
+                showResult(
+                    `✅ ${selectedIds.size} participant(s) supprimé(s)\n` +
+                    `${predictionsDeleted} pronostic(s) supprimé(s)`,
+                    'success'
+                );
+                
+                // Réinitialiser
+                selectedIds.clear();
+                
+                // Recharger après 1 seconde
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+
+            } catch (error) {
+                console.error('Erreur:', error);
+                showResult(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        // Scanner automatiquement au chargement
+        window.addEventListener('load', () => {
+            setTimeout(scanParticipants, 300);
+        });
+    </script>
+</body>
+</html>
