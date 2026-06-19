@@ -1386,21 +1386,36 @@ function renderMatches() {
       background: ${isLocked ? 'rgba(239, 68, 68, 0.05)' : 'rgba(102, 126, 234, 0.05)'};
     `;
     
-    // En-tête de la journée
+    // Déterminer si cette journée doit être ouverte par défaut
+    // Ouvrir la première journée non verrouillée, ou la première si toutes sont verrouillées
+    const isFirstUnlocked = dayGroups.findIndex(g => !isDayLocked(g.matches)) === dayIndex;
+    const shouldBeOpen = isFirstUnlocked || (dayIndex === 0 && dayGroups.every(g => isDayLocked(g.matches)));
+    
+    // En-tête de la journée (cliquable pour ouvrir/fermer)
     const dayHeader = document.createElement("div");
     dayHeader.style.cssText = `
       background: ${isLocked ? '#ef4444' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'};
       color: white;
       padding: 1.2rem 1.5rem;
+      cursor: pointer;
+      user-select: none;
+      transition: opacity 0.2s;
     `;
     dayHeader.innerHTML = `
-      <h3 style="margin: 0; font-size: 1.4rem;">
-        ${isLocked ? '🔒' : '📅'} ${dayName}
-      </h3>
-      <p style="margin: 0.5rem 0 0 0; font-size: 0.95rem; opacity: 0.95;">
-        ${formatDate(dayGroup.matches[0].date).split(',')[0]}
-      </p>
-      <div style="margin-top: 0.8rem; display: flex; gap: 1.5rem; font-size: 0.9rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="flex: 1;">
+          <h3 style="margin: 0; font-size: 1.4rem;">
+            ${isLocked ? '🔒' : '📅'} ${dayName}
+          </h3>
+          <p style="margin: 0.5rem 0 0 0; font-size: 0.95rem; opacity: 0.95;">
+            ${formatDate(dayGroup.matches[0].date).split(',')[0]}
+          </p>
+        </div>
+        <div class="chevron" style="font-size: 1.5rem; transition: transform 0.3s; transform: rotate(${shouldBeOpen ? '180deg' : '0deg'});">
+          ▼
+        </div>
+      </div>
+      <div style="margin-top: 0.8rem; display: flex; gap: 1.5rem; font-size: 0.9rem; flex-wrap: wrap;">
         <div style="display: flex; align-items: center; gap: 0.5rem;">
           <span style="font-size: 1.2rem;">💾</span>
           <span><strong>${savedCount}/${totalMatches}</strong> pronósticos guardados</span>
@@ -1411,6 +1426,15 @@ function renderMatches() {
         </div>
       </div>
     `;
+    
+    // Effet hover
+    dayHeader.addEventListener('mouseenter', () => {
+      dayHeader.style.opacity = '0.9';
+    });
+    dayHeader.addEventListener('mouseleave', () => {
+      dayHeader.style.opacity = '1';
+    });
+    
     daySection.appendChild(dayHeader);
     
     // Avertissement de délai (seulement pour les matchs de la Coupe du Monde)
@@ -1463,6 +1487,14 @@ function renderMatches() {
       `;
       daySection.appendChild(infoBox);
     }
+    
+    // Conteneur pliable pour le contenu de la journée
+    const collapsibleContent = document.createElement("div");
+    collapsibleContent.className = "day-content";
+    collapsibleContent.style.cssText = `
+      display: ${shouldBeOpen ? 'block' : 'none'};
+      transition: all 0.3s ease-in-out;
+    `;
     
     // Conteneur des matchs
     const matchesContainer = document.createElement("div");
@@ -1569,7 +1601,7 @@ function renderMatches() {
       matchesContainer.appendChild(card);
     });
     
-    daySection.appendChild(matchesContainer);
+    collapsibleContent.appendChild(matchesContainer);
     
     // Ajouter les boutons d'action après chaque journée
     const actionButtonsContainer = document.createElement("div");
@@ -1591,7 +1623,23 @@ function renderMatches() {
       </button>
     `;
     
-    daySection.appendChild(actionButtonsContainer);
+    collapsibleContent.appendChild(actionButtonsContainer);
+    daySection.appendChild(collapsibleContent);
+    
+    // Ajouter l'événement click pour ouvrir/fermer la journée
+    dayHeader.addEventListener('click', () => {
+      const isCurrentlyOpen = collapsibleContent.style.display !== 'none';
+      const chevron = dayHeader.querySelector('.chevron');
+      
+      if (isCurrentlyOpen) {
+        collapsibleContent.style.display = 'none';
+        chevron.style.transform = 'rotate(0deg)';
+      } else {
+        collapsibleContent.style.display = 'block';
+        chevron.style.transform = 'rotate(180deg)';
+      }
+    });
+    
     matchesList.appendChild(daySection);
     
     // Attacher les événements aux boutons de cette journée
