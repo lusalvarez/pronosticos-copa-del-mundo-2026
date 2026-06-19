@@ -311,9 +311,12 @@ function renderPublicMatches() {
     const deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
     
     // Déterminer si cette journée doit être ouverte par défaut
-    // Ouvrir la première journée verrouillée (avec résultats), ou la première si aucune n'est verrouillée
-    const isFirstLocked = dayGroups.findIndex(g => isDayLocked(g.matches)) === dayIndex;
-    const shouldBeOpen = isFirstLocked || (dayIndex === 0 && !dayGroups.some(g => isDayLocked(g.matches)));
+    // Ouvrir la dernière journée verrouillée (la journée en cours avec résultats)
+    const lockedDays = dayGroups.map((g, idx) => ({ locked: isDayLocked(g.matches), index: idx }))
+                                .filter(d => d.locked);
+    const lastLockedIndex = lockedDays.length > 0 ? lockedDays[lockedDays.length - 1].index : -1;
+    const shouldBeOpen = (lastLockedIndex >= 0 && dayIndex === lastLockedIndex) ||
+                         (lastLockedIndex === -1 && dayIndex === 0);
     
     // Section de la journée
     const daySection = document.createElement("div");
