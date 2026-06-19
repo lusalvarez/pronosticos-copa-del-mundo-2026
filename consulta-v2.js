@@ -166,6 +166,9 @@ function getOutcome(home, away) {
 }
 
 function computePredictionPoints(prediction, actualScore) {
+  // Vérifier que prediction existe
+  if (!prediction) return 0;
+  
   const predictedHome = toNumber(prediction.home);
   const predictedAway = toNumber(prediction.away);
   const actualHome = toNumber(actualScore.home);
