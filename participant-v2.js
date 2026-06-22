@@ -992,40 +992,16 @@ startBtn.addEventListener("click", async () => {
         return;
       } else {
         // Le participant n'existe PAS dans Firebase
-        // Essayer de charger depuis localStorage si disponible
-        console.log("ℹ️ Participante no encontrado en Firebase. Verificando localStorage...");
-        const savedData = localStorage.getItem(PARTICIPANT_STORAGE_KEY);
-        
-        if (savedData) {
-          try {
-            const parsed = JSON.parse(savedData);
-            // Vérifier que c'est bien le même participant et mot de passe
-            if (parsed.participantName === name && parsed.participantPassword === inputPasswordHash) {
-              console.log("✅ Datos locales encontrados para este participante");
-              participantName = name;
-              participantPassword = inputPasswordHash;
-              predictions = parsed.predictions || {};
-              
-              // Charger les compteurs de pronostics envoyés
-              loadSentPredictions();
-              
-              // Initialiser les prédictions manquantes
-              matches.forEach((match, index) => {
-                if (!predictions[index]) {
-                  predictions[index] = { home: "", away: "", firstGoal: "" };
-                }
-              });
-              
-              saveData();
-              showMainView();
-              return;
-            } else {
-              console.log("⚠️ Datos locales no coinciden con este participante");
-            }
-          } catch (e) {
-            console.error("❌ Error al parsear localStorage:", e);
-          }
-        }
+        console.log("❌ Participante no encontrado en Firebase");
+        alert(
+          `❌ Participante no encontrado\n\n` +
+          `El nombre "${name}" no existe en la base de datos.\n\n` +
+          `Por favor verifica:\n` +
+          `• Que el nombre esté escrito correctamente\n` +
+          `• Que hayas sido registrado por el administrador\n\n` +
+          `Si el problema persiste, contacta al administrador.`
+        );
+        return;
       }
     } catch (error) {
       console.warn("⚠️ Firebase no disponible, usando modo local:", error.message);
@@ -1060,22 +1036,18 @@ startBtn.addEventListener("click", async () => {
     }
   }
 
-  // Nouveau participant (ni en local, ni dans Firebase)
-  console.log("✨ Creando nuevo participante");
-  
-  participantName = name;
-  participantPassword = inputPasswordHash;
-  
-  // Initialiser les prédictions vides
-  predictions = {};
-  sentPredictions = {}; // Nouveau participant = pas de pronostics envoyés
-  matches.forEach((match, index) => {
-    predictions[index] = { home: "", away: "", firstGoal: "" };
-  });
-
-  console.log("✅ Nuevo participante creado");
-  saveData();
-  showMainView();
+  // Si on arrive ici, c'est que Firebase n'est pas disponible
+  // Dans ce cas, on refuse la création de nouveaux participants
+  console.log("❌ No se puede crear nuevo participante sin Firebase");
+  alert(
+    `❌ No se puede acceder\n\n` +
+    `No se pudo verificar tu nombre en la base de datos.\n\n` +
+    `Posibles causas:\n` +
+    `• Problemas de conexión a Internet\n` +
+    `• El servidor Firebase no está disponible\n\n` +
+    `Por favor intenta de nuevo más tarde o contacta al administrador.`
+  );
+  return;
 });
 
 // Désactiver le bouton au démarrage jusqu'à ce que les matchs soient chargés
