@@ -40,29 +40,9 @@
         50% { content: "😱"; }
       }
       
-      .big-roaring-tiger {
-        display: block;
-        text-align: center;
-        animation: roar 1.5s ease-in-out infinite;
-        transform-origin: center;
-        font-size: 6em;
-        position: relative;
-        margin: 2rem 0;
-      }
-      
-      .big-roaring-tiger::before {
-        content: "🐯";
-        display: inline-block;
-        animation: tigerFace 1.5s steps(2, end) infinite;
-      }
-      
       @media (max-width: 900px) {
         .roaring-tiger {
           font-size: 1.8em;
-        }
-        .big-roaring-tiger {
-          font-size: 4em;
-          margin: 1.5rem 0;
         }
       }
     </style>
@@ -81,7 +61,6 @@
     <main class="layout">
       <section id="public-view" class="view active">
         <div class="panel">
-          <div class="big-roaring-tiger"></div>
           <h2><span class="roaring-tiger"></span> Clasificación general</h2>
           <div style="margin-bottom: 1rem; padding: 1rem; background: #eff6ff; border-left: 4px solid #2563eb; border-radius: 8px;">
             <p style="margin: 0 0 0.5rem 0; font-weight: bold; color: #1d4ed8;">📘 Reglas de puntuación</p>
