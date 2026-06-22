@@ -1040,6 +1040,14 @@ function renderAdminMatches() {
       deadline = new Date(deadline.getTime() + (delayHours * 60 * 60 * 1000));
     }
     
+    // Déterminer si cette journée doit être ouverte par défaut
+    // Ouvrir la dernière journée verrouillée (la journée en cours avec résultats)
+    const lockedDays = dayGroups.map((g, idx) => ({ locked: isDayLocked(g.matches, idx), index: idx }))
+                                .filter(d => d.locked);
+    const lastLockedIndex = lockedDays.length > 0 ? lockedDays[lockedDays.length - 1].index : -1;
+    const shouldBeOpen = (lastLockedIndex >= 0 && dayIndex === lastLockedIndex) ||
+                         (lastLockedIndex === -1 && dayIndex === 0);
+    
     // Section de la journée
     const daySection = document.createElement("div");
     daySection.style.cssText = `
@@ -1050,21 +1058,39 @@ function renderAdminMatches() {
       background: ${isLocked ? 'rgba(239, 68, 68, 0.05)' : 'rgba(102, 126, 234, 0.05)'};
     `;
     
-    // En-tête de la journée
+    // En-tête de la journée (cliquable pour ouvrir/fermer)
     const dayHeader = document.createElement("div");
     dayHeader.style.cssText = `
       background: ${isLocked ? '#ef4444' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'};
       color: white;
       padding: 1.2rem 1.5rem;
+      cursor: pointer;
+      user-select: none;
+      transition: opacity 0.2s;
     `;
     dayHeader.innerHTML = `
-      <h3 style="margin: 0; font-size: 1.4rem;">
-        ${isLocked ? '🔒' : '📅'} ${dayName}
-      </h3>
-      <p style="margin: 0.5rem 0 0 0; font-size: 0.95rem; opacity: 0.95;">
-        ${formatDate(dayGroup.matches[0].date).split(',')[0]}
-      </p>
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div style="flex: 1;">
+          <h3 style="margin: 0; font-size: 1.4rem;">
+            ${isLocked ? '🔒' : '📅'} ${dayName}
+          </h3>
+          <p style="margin: 0.5rem 0 0 0; font-size: 0.95rem; opacity: 0.95;">
+            ${formatDate(dayGroup.matches[0].date).split(',')[0]}
+          </p>
+        </div>
+        <div class="chevron" style="font-size: 1.5rem; transition: transform 0.3s; transform: rotate(${shouldBeOpen ? '180deg' : '0deg'}); margin-left: 1rem;">
+          ▼
+        </div>
+      </div>
     `;
+    
+    // Effet hover
+    dayHeader.addEventListener('mouseenter', () => {
+      dayHeader.style.opacity = '0.9';
+    });
+    dayHeader.addEventListener('mouseleave', () => {
+      dayHeader.style.opacity = '1';
+    });
     
     // Ajouter un bouton WhatsApp dans l'en-tête
     const whatsappBtn = document.createElement("button");
@@ -1103,6 +1129,14 @@ function renderAdminMatches() {
     
     daySection.appendChild(dayHeader);
     
+    // Conteneur pliable pour le contenu de la journée
+    const collapsibleContent = document.createElement("div");
+    collapsibleContent.className = "day-content";
+    collapsibleContent.style.cssText = `
+      display: ${shouldBeOpen ? 'block' : 'none'};
+      transition: all 0.3s ease-in-out;
+    `;
+    
     // Avertissement de délai
     const warningBox = document.createElement("div");
     warningBox.style.cssText = `
@@ -1133,7 +1167,7 @@ function renderAdminMatches() {
         </p>
       `;
     }
-    daySection.appendChild(warningBox);
+    collapsibleContent.appendChild(warningBox);
     
     // Conteneur des matchs
     const matchesContainer = document.createElement("div");
@@ -1321,7 +1355,22 @@ function renderAdminMatches() {
       matchesContainer.appendChild(fragment);
     });
     
-    daySection.appendChild(matchesContainer);
+    collapsibleContent.appendChild(matchesContainer);
+    daySection.appendChild(collapsibleContent);
+    
+    // Gestionnaire de clic pour ouvrir/fermer la journée
+    const chevron = dayHeader.querySelector('.chevron');
+    dayHeader.addEventListener('click', (e) => {
+      // Ne pas déclencher le toggle si on clique sur un bouton
+      if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+        return;
+      }
+      
+      const isCurrentlyOpen = collapsibleContent.style.display !== 'none';
+      collapsibleContent.style.display = isCurrentlyOpen ? 'none' : 'block';
+      chevron.style.transform = isCurrentlyOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    });
+    
     adminMatches.appendChild(daySection);
   });
 }
