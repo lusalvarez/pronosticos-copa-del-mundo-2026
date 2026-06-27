@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nettoyer les données locales de Marta</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+        .warning {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .scan-btn {
+            background: #007bff;
+            color: white;
+        }
+        .scan-btn:hover {
+            background: #0056b3;
+        }
+        .clean-btn {
+            background: #dc3545;
+            color: white;
+        }
+        .clean-btn:hover {
+            background: #c82333;
+        }
+        .clean-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info-box {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .storage-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-left: 3px solid #007bff;
+            border-radius: 3px;
+        }
+        .storage-key {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .marta-item {
+            border-left-color: #dc3545;
+        }
+        .marta-key {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Nettoyer les données locales de Marta</h1>
+        
+        <div class="info">
+            <strong>ℹ️ Information:</strong>
+            <p>Ce script va scanner et nettoyer toutes les données de "Marta" stockées dans le localStorage de votre navigateur.</p>
+            <p>Le localStorage est utilisé pour stocker temporairement les pronostics avant leur envoi à Firebase.</p>
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Important:</strong>
+            <ul>
+                <li>Ouvrez cette page depuis le même domaine que votre application (même origine)</li>
+                <li>Les données supprimées du localStorage ne peuvent pas être récupérées</li>
+                <li>Cela n'affectera pas les données dans Firebase</li>
+            </ul>
+        </div>
+
+        <div>
+            <button class="scan-btn" onclick="scanLocalStorage()">🔍 Scanner le localStorage</button>
+            <button class="clean-btn" id="cleanBtn" onclick="cleanMartaData()" disabled>🗑️ Nettoyer les données de Marta</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        let martaKeys = [];
+
+        function showResults(message, type, html = '') {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `<p>${message}</p>${html}`;
+            resultsDiv.className = type;
+            resultsDiv.style.display = 'block';
+        }
+
+        function scanLocalStorage() {
+            try {
+                martaKeys = [];
+                let allKeys = [];
+                let martaData = [];
+                
+                // Scanner tout le localStorage
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    const value = localStorage.getItem(key);
+                    
+                    allKeys.push({key, value});
+                    
+                    // Chercher "Marta" dans la clé ou la valeur
+                    if (key.toLowerCase().includes('marta') || 
+                        (value && value.toLowerCase().includes('marta'))) {
+                        martaKeys.push(key);
+                        martaData.push({key, value});
+                    }
+                }
+
+                if (martaKeys.length === 0) {
+                    showResults(
+                        '✅ Aucune donnée de Marta trouvée dans le localStorage.',
+                        'success',
+                        `<p><strong>Total d'entrées dans localStorage:</strong> ${allKeys.length}</p>`
+                    );
+                    document.getElementById('cleanBtn').disabled = true;
+                    return;
+                }
+
+                // Afficher les résultats
+                let html = `<p><strong>🔍 Résultats du scan:</strong></p>`;
+                html += `<p>Total d'entrées: ${allKeys.length} | Entrées avec "Marta": ${martaKeys.length}</p>`;
+                html += `<hr>`;
+                html += `<h3>Données de Marta trouvées:</h3>`;
+                
+                martaData.forEach(item => {
+                    html += `<div class="storage-item marta-item">`;
+                    html += `<div class="storage-key marta-key">🔑 ${item.key}</div>`;
+                    html += `<pre>${item.value.substring(0, 500)}${item.value.length > 500 ? '...' : ''}</pre>`;
+                    html += `</div>`;
+                });
+
+                showResults(
+                    `⚠️ ${martaKeys.length} entrée(s) contenant "Marta" trouvée(s):`,
+                    'info-box',
+                    html
+                );
+
+                document.getElementById('cleanBtn').disabled = false;
+
+            } catch (error) {
+                console.error('Erreur lors du scan:', error);
+                showResults(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        function cleanMartaData() {
+            if (martaKeys.length === 0) {
+                showResults('❌ Aucune donnée à nettoyer. Scannez d\'abord le localStorage.', 'error');
+                return;
+            }
+
+            const confirmed = confirm(
+                `⚠️ CONFIRMATION REQUISE\n\n` +
+                `${martaKeys.length} entrée(s) contenant "Marta" seront supprimées:\n\n` +
+                martaKeys.map(k => `- ${k}`).join('\n') + '\n\n' +
+                `Voulez-vous continuer ?`
+            );
+
+            if (!confirmed) {
+                showResults('❌ Nettoyage annulé par l\'utilisateur.', 'error');
+                return;
+            }
+
+            try {
+                let deletedCount = 0;
+                const deletedKeys = [];
+
+                martaKeys.forEach(key => {
+                    try {
+                        localStorage.removeItem(key);
+                        deletedKeys.push(key);
+                        deletedCount++;
+                    } catch (e) {
+                        console.error(`Erreur lors de la suppression de ${key}:`, e);
+                    }
+                });
+
+                let html = `<p><strong>Clés supprimées:</strong></p><ul>`;
+                deletedKeys.forEach(key => {
+                    html += `<li>✓ ${key}</li>`;
+                });
+                html += `</ul>`;
+
+                showResults(
+                    `✅ Succès! ${deletedCount} entrée(s) supprimée(s) du localStorage.`,
+                    'success',
+                    html
+                );
+
+                martaKeys = [];
+                document.getElementById('cleanBtn').disabled = true;
+
+            } catch (error) {
+                console.error('Erreur lors du nettoyage:', error);
+                showResults(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        // Scanner automatiquement au chargement
+        window.addEventListener('load', () => {
+            setTimeout(scanLocalStorage, 500);
+        });
+    </script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restaurer Laurent - Copa del Mundo</title>
+    <title>Restaurer Beatriz - Copa del Mundo</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -135,15 +135,15 @@
 </head>
 <body>
     <div class="container">
-        <h1>🔄 Restaurer Laurent depuis le backup</h1>
+        <h1>🔄 Restaurer Beatriz depuis le backup</h1>
         
         <div class="info">
             <strong>ℹ️ Instructions</strong>
             <ol>
                 <li>Sélectionnez votre fichier de backup JSON</li>
-                <li>Le script va extraire uniquement les données de Laurent</li>
-                <li>Cliquez sur "Restaurer Laurent dans Firebase"</li>
-                <li>Laurent réapparaîtra dans la consultation</li>
+                <li>Le script va extraire uniquement les données de Beatriz</li>
+                <li>Cliquez sur "Restaurer Beatriz dans Firebase"</li>
+                <li>Beatriz réapparaîtra dans la consultation</li>
             </ol>
         </div>
 
@@ -156,13 +156,13 @@
         </div>
 
         <div class="participant-preview" id="preview">
-            <h3>👤 Aperçu des données de Laurent</h3>
+            <h3>👤 Aperçu des données de Beatriz</h3>
             <div id="previewContent"></div>
         </div>
 
         <div style="margin: 20px 0;">
-            <button id="restoreBtn" onclick="restoreLaurent()" disabled>
-                🚀 Restaurer Laurent dans Firebase
+            <button id="restoreBtn" onclick="restoreBeatriz()" disabled>
+                🚀 Restaurer Beatriz dans Firebase
             </button>
             <button onclick="location.reload()" class="danger">
                 🔄 Recommencer
@@ -170,12 +170,12 @@
         </div>
 
         <div id="successMsg" class="success">
-            <strong>✅ Laurent a été restauré avec succès!</strong>
+            <strong>✅ Beatriz a été restaurée avec succès!</strong>
             <p>Vous pouvez maintenant:</p>
             <ul>
                 <li>Rafraîchir la page d'administration (index.html)</li>
                 <li>Rafraîchir la page de consultation (consulta.html)</li>
-                <li>Vérifier que Laurent apparaît dans la classification</li>
+                <li>Vérifier que Beatriz apparaît dans la classification</li>
             </ul>
         </div>
 
@@ -193,7 +193,7 @@
     <script src="firebase-config.js"></script>
 
     <script>
-        let laurentData = null;
+        let beatrizData = null;
 
         function addLog(message, type = 'info') {
             const logDiv = document.getElementById('log');
@@ -246,25 +246,25 @@
                         }
                     }
 
-                    addLog(`🔍 Recherche de Laurent dans: ${JSON.stringify(Object.keys(searchData)).substring(0, 200)}`, 'info');
+                    addLog(`🔍 Recherche de Beatriz dans: ${JSON.stringify(Object.keys(searchData)).substring(0, 200)}`, 'info');
 
-                    // Cas 1: Les données sont directement celles de Laurent
-                    if (searchData.participantName &&
-                        searchData.participantName.toLowerCase() === 'laurent') {
+                    // Cas 1: Les données sont directement celles de Beatriz
+                    if (searchData.participantName && 
+                        searchData.participantName.toLowerCase() === 'beatriz') {
                         data = searchData;
                         firebaseKey = normalizeParticipantId(data.participantName);
-                        addLog('✅ Format détecté: données directes de Laurent', 'info');
-                    }
-                    // Cas 2: Chercher Laurent dans l'objet
+                        addLog('✅ Format détecté: données directes de Beatriz', 'info');
+                    } 
+                    // Cas 2: Chercher Beatriz dans l'objet
                     else if (typeof searchData === 'object') {
                         for (const [key, value] of Object.entries(searchData)) {
                             if (value && typeof value === 'object') {
                                 if (value.participantName) {
                                     addLog(`🔍 Clé "${key}": ${value.participantName}`, 'info');
-                                    if (value.participantName.toLowerCase() === 'laurent') {
+                                    if (value.participantName.toLowerCase() === 'beatriz') {
                                         firebaseKey = key;
                                         data = value;
-                                        addLog(`✅ Laurent trouvé sous la clé "${key}"!`, 'success');
+                                        addLog(`✅ Beatriz trouvée sous la clé "${key}"!`, 'success');
                                         break;
                                     }
                                 }
@@ -273,15 +273,15 @@
                     }
 
                     if (!data) {
-                        throw new Error("Laurent n'a pas été trouvé dans le fichier de backup. Vérifiez le log ci-dessus pour voir la structure du fichier.");
+                        throw new Error("Beatriz n'a pas été trouvée dans le fichier de backup. Vérifiez le log ci-dessus pour voir la structure du fichier.");
                     }
 
-                    laurentData = {
+                    beatrizData = {
                         firebaseKey: firebaseKey,
                         data: data
                     };
 
-                    addLog(`✅ Laurent trouvé dans le backup!`, 'success');
+                    addLog(`✅ Beatriz trouvée dans le backup!`, 'success');
                     addLog(`   Clé Firebase: ${firebaseKey}`, 'info');
                     addLog(`   Nom: ${data.participantName}`, 'info');
                     addLog(`   Nombre de pronostics: ${data.predictions ? data.predictions.length : 0}`, 'info');
@@ -290,16 +290,16 @@
                     const preview = document.getElementById('preview');
                     const previewContent = document.getElementById('previewContent');
                     
-                    const validPredictions = data.predictions.filter(p => 
+                    const validPredictions = data.predictions ? data.predictions.filter(p => 
                         p.prediction && 
                         (p.prediction.home !== "" || p.prediction.away !== "")
-                    ).length;
+                    ).length : 0;
 
                     previewContent.innerHTML = `
                         <p><strong>Nom:</strong> ${data.participantName}</p>
                         <p><strong>Clé Firebase:</strong> ${firebaseKey}</p>
                         <p class="prediction-count">
-                            <strong>Pronostics:</strong> ${validPredictions} pronostics valides sur ${data.predictions.length} matchs
+                            <strong>Pronostics:</strong> ${validPredictions} pronostics valides sur ${data.predictions ? data.predictions.length : 0} matchs
                         </p>
                     `;
                     preview.style.display = 'block';
@@ -321,8 +321,8 @@
             reader.readAsText(file);
         }
 
-        async function restoreLaurent() {
-            if (!laurentData) {
+        async function restoreBeatriz() {
+            if (!beatrizData) {
                 alert('Veuillez d\'abord charger un fichier de backup');
                 return;
             }
@@ -341,13 +341,13 @@
                 const db = firebase.database();
                 const participantsRef = db.ref('participants');
 
-                addLog(`🔄 Restauration de Laurent dans Firebase...`, 'info');
+                addLog(`🔄 Restauration de Beatriz dans Firebase...`, 'info');
 
                 // Utiliser la clé Firebase du backup
-                await participantsRef.child(laurentData.firebaseKey).set(laurentData.data);
+                await participantsRef.child(beatrizData.firebaseKey).set(beatrizData.data);
 
-                addLog('✅ Laurent a été restauré dans Firebase!', 'success');
-                addLog(`   ${laurentData.data.predictions.length} pronostics restaurés`, 'success');
+                addLog('✅ Beatriz a été restaurée dans Firebase!', 'success');
+                addLog(`   ${beatrizData.data.predictions ? beatrizData.data.predictions.length : 0} pronostics restaurés`, 'success');
 
                 // Afficher le message de succès
                 document.getElementById('successMsg').style.display = 'block';
@@ -358,7 +358,7 @@
                 document.getElementById('errorDetails').textContent = error.message;
                 document.getElementById('errorMsg').style.display = 'block';
                 btn.disabled = false;
-                btn.textContent = '🚀 Restaurer Laurent dans Firebase';
+                btn.textContent = '🚀 Restaurer Beatriz dans Firebase';
             }
         }
     </script>

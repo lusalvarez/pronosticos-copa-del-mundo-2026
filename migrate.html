@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migration des IDs - Copa del Mundo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .info {
+            background: #d1ecf1;
+            border-left: 4px solid #0dcaf0;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d1e7dd;
+            border-left: 4px solid #198754;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            display: none;
+        }
+        .error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            display: none;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        #log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+        }
+        .log-success { color: #198754; }
+        .log-info { color: #0dcaf0; }
+        .log-warning { color: #ffc107; }
+        .log-error { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Migration des IDs des participants</h1>
+        
+        <div class="info">
+            <strong>ℹ️ À propos de cette migration</strong>
+            <p>Cette migration va mettre à jour les IDs des participants pour utiliser un format cohérent basé sur leur nom. Cela résoudra le problème des participants qui disparaissent de la page de consultation.</p>
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Important</strong>
+            <ul>
+                <li>Cette migration doit être exécutée <strong>une seule fois</strong></li>
+                <li>Elle modifiera les données dans localStorage</li>
+                <li>Assurez-vous d'avoir une sauvegarde si nécessaire</li>
+            </ul>
+        </div>
+
+        <button id="migrateBtn" onclick="runMigration()">
+            🚀 Lancer la migration
+        </button>
+
+        <div id="successMsg" class="success">
+            <strong>✅ Migration réussie!</strong>
+            <p id="successDetails"></p>
+            <p><strong>Prochaines étapes:</strong></p>
+            <ol>
+                <li>Rafraîchissez la page d'administration (index.html)</li>
+                <li>Rafraîchissez la page de consultation (consulta.html)</li>
+                <li>Vérifiez que tous les participants apparaissent correctement</li>
+            </ol>
+        </div>
+
+        <div id="errorMsg" class="error">
+            <strong>❌ Erreur lors de la migration</strong>
+            <p id="errorDetails"></p>
+        </div>
+
+        <div id="log"></div>
+    </div>
+
+    <script>
+        // Fonction pour normaliser le nom du participant en ID cohérent
+        function normalizeParticipantId(name) {
+            return name
+                .toLowerCase()
+                .trim()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/\s+/g, '-');
+        }
+
+        function addLog(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            logDiv.style.display = 'block';
+            
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = message;
+            logDiv.appendChild(entry);
+            
+            // Auto-scroll vers le bas
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function runMigration() {
+            const btn = document.getElementById('migrateBtn');
+            const successMsg = document.getElementById('successMsg');
+            const errorMsg = document.getElementById('errorMsg');
+            const logDiv = document.getElementById('log');
+            
+            // Réinitialiser l'affichage
+            btn.disabled = true;
+            successMsg.style.display = 'none';
+            errorMsg.style.display = 'none';
+            logDiv.innerHTML = '';
+            logDiv.style.display = 'block';
+            
+            try {
+                addLog("🔄 Début de la migration des IDs des participants...", "info");
+                
+                // Charger l'état depuis localStorage
+                const stateJson = localStorage.getItem("worldcup-state");
+                if (!stateJson) {
+                    throw new Error("Aucune donnée trouvée dans localStorage");
+                }
+                
+                const state = JSON.parse(stateJson);
+                addLog(`📊 État chargé: ${state.participants.length} participants, ${state.matches.length} matchs`, "info");
+                
+                // Créer un mapping des anciens IDs vers les nouveaux IDs
+                const idMapping = {};
+                
+                // Mettre à jour les IDs des participants
+                state.participants.forEach(participant => {
+                    const oldId = participant.id;
+                    const newId = normalizeParticipantId(participant.name);
+                    
+                    if (oldId !== newId) {
+                        idMapping[oldId] = newId;
+                        participant.id = newId;
+                        addLog(`✅ Participant "${participant.name}": ${oldId.substring(0, 8)}... → ${newId}`, "success");
+                    } else {
+                        addLog(`ℹ️ Participant "${participant.name}": ID déjà correct (${newId})`, "info");
+                    }
+                });
+                
+                // Mettre à jour les prédictions dans les matchs
+                addLog("🔄 Mise à jour des prédictions dans les matchs...", "info");
+                let updatedPredictions = 0;
+                
+                state.matches.forEach(match => {
+                    const newPredictions = {};
+                    
+                    Object.entries(match.predictions).forEach(([oldId, prediction]) => {
+                        const newId = idMapping[oldId] || oldId;
+                        newPredictions[newId] = prediction;
+                        if (oldId !== newId) {
+                            updatedPredictions++;
+                        }
+                    });
+                    
+                    match.predictions = newPredictions;
+                });
+                
+                addLog(`✅ ${updatedPredictions} prédictions mises à jour`, "success");
+                
+                // Sauvegarder l'état mis à jour
+                localStorage.setItem("worldcup-state", JSON.stringify(state));
+                addLog("💾 État sauvegardé dans localStorage", "success");
+                
+                // Afficher le message de succès
+                const migratedCount = Object.keys(idMapping).length;
+                document.getElementById('successDetails').innerHTML = `
+                    <strong>${migratedCount}</strong> participant(s) ont été migrés sur un total de <strong>${state.participants.length}</strong> participants.
+                `;
+                successMsg.style.display = 'block';
+                
+                addLog("✅ Migration terminée avec succès!", "success");
+                
+            } catch (error) {
+                addLog(`❌ Erreur: ${error.message}`, "error");
+                document.getElementById('errorDetails').textContent = error.message;
+                errorMsg.style.display = 'block';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

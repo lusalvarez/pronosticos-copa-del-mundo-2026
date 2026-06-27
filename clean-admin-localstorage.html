@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nettoyer Marta du localStorage Admin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+        .warning {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .scan-btn {
+            background: #007bff;
+            color: white;
+        }
+        .scan-btn:hover {
+            background: #0056b3;
+        }
+        .clean-btn {
+            background: #dc3545;
+            color: white;
+        }
+        .clean-btn:hover {
+            background: #c82333;
+        }
+        .clean-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info-box {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        .participant-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-left: 3px solid #007bff;
+            border-radius: 3px;
+        }
+        .marta-item {
+            border-left-color: #dc3545;
+            background: #ffe6e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Nettoyer Marta du localStorage Admin</h1>
+        
+        <div class="info">
+            <strong>ℹ️ Information:</strong>
+            <p>Ce script va supprimer le participant "Marta" du localStorage de la page administrateur.</p>
+            <p><strong>Clé localStorage:</strong> <code>pronostics-coupe-du-monde-v1</code></p>
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Important:</strong>
+            <ul>
+                <li>Ouvrez cette page depuis le même domaine que votre page admin</li>
+                <li>Ou copiez le code JavaScript dans la console de la page admin (index.html)</li>
+                <li>Les pronostics de Marta seront également supprimés</li>
+            </ul>
+        </div>
+
+        <div>
+            <button class="scan-btn" onclick="scanData()">🔍 Scanner les participants</button>
+            <button class="clean-btn" id="cleanBtn" onclick="cleanMarta()" disabled>🗑️ Supprimer Marta</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = "pronostics-coupe-du-monde-v1";
+        let currentState = null;
+        let martaFound = false;
+
+        function showResults(message, type, html = '') {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `<p>${message}</p>${html}`;
+            resultsDiv.className = type;
+            resultsDiv.style.display = 'block';
+        }
+
+        function scanData() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                
+                if (!saved) {
+                    showResults('❌ Aucune donnée trouvée dans le localStorage.', 'error');
+                    return;
+                }
+
+                currentState = JSON.parse(saved);
+                
+                if (!currentState.participants || !Array.isArray(currentState.participants)) {
+                    showResults('❌ Structure de données invalide.', 'error');
+                    return;
+                }
+
+                // Chercher Marta
+                const martaIndex = currentState.participants.findIndex(p => 
+                    p.name && p.name.toLowerCase() === 'marta'
+                );
+
+                martaFound = martaIndex !== -1;
+
+                let html = `<h3>📋 Participants trouvés (${currentState.participants.length}):</h3>`;
+                
+                currentState.participants.forEach((p, index) => {
+                    const isMarta = p.name && p.name.toLowerCase() === 'marta';
+                    html += `<div class="participant-item ${isMarta ? 'marta-item' : ''}">`;
+                    html += `<strong>${index + 1}. ${p.name || 'Sans nom'}</strong> `;
+                    html += `<small>(ID: ${p.id})</small>`;
+                    if (isMarta) {
+                        html += ` <span style="color: #dc3545; font-weight: bold;">← À SUPPRIMER</span>`;
+                    }
+                    html += `</div>`;
+                });
+
+                if (martaFound) {
+                    showResults(
+                        '⚠️ Participant "Marta" trouvé dans le localStorage!',
+                        'info-box',
+                        html
+                    );
+                    document.getElementById('cleanBtn').disabled = false;
+                } else {
+                    showResults(
+                        '✅ Aucun participant "Marta" trouvé. Le localStorage est propre.',
+                        'success',
+                        html
+                    );
+                    document.getElementById('cleanBtn').disabled = true;
+                }
+
+            } catch (error) {
+                console.error('Erreur lors du scan:', error);
+                showResults(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        function cleanMarta() {
+            if (!currentState || !martaFound) {
+                showResults('❌ Scannez d\'abord les données.', 'error');
+                return;
+            }
+
+            const confirmed = confirm(
+                '⚠️ CONFIRMATION REQUISE\n\n' +
+                'Le participant "Marta" et tous ses pronostics seront supprimés.\n\n' +
+                'Voulez-vous continuer ?'
+            );
+
+            if (!confirmed) {
+                showResults('❌ Suppression annulée.', 'error');
+                return;
+            }
+
+            try {
+                // Trouver l'ID de Marta
+                const marta = currentState.participants.find(p => 
+                    p.name && p.name.toLowerCase() === 'marta'
+                );
+
+                if (!marta) {
+                    showResults('❌ Marta non trouvée.', 'error');
+                    return;
+                }
+
+                const martaId = marta.id;
+                const martaName = marta.name;
+
+                // Supprimer Marta de la liste des participants
+                currentState.participants = currentState.participants.filter(p => 
+                    p.id !== martaId
+                );
+
+                // Supprimer les pronostics de Marta dans tous les matchs
+                let predictionsDeleted = 0;
+                if (currentState.matches && Array.isArray(currentState.matches)) {
+                    currentState.matches.forEach(match => {
+                        if (match.predictions && match.predictions[martaId]) {
+                            delete match.predictions[martaId];
+                            predictionsDeleted++;
+                        }
+                    });
+                }
+
+                // Sauvegarder dans le localStorage
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState));
+
+                let html = `<div style="margin-top: 15px;">`;
+                html += `<p><strong>✓ Participant supprimé:</strong> ${martaName} (ID: ${martaId})</p>`;
+                html += `<p><strong>✓ Pronostics supprimés:</strong> ${predictionsDeleted}</p>`;
+                html += `<p><strong>✓ Participants restants:</strong> ${currentState.participants.length}</p>`;
+                html += `</div>`;
+
+                showResults(
+                    '✅ Nettoyage terminé avec succès!',
+                    'success',
+                    html
+                );
+
+                document.getElementById('cleanBtn').disabled = true;
+                martaFound = false;
+
+                // Afficher un message pour recharger la page admin
+                setTimeout(() => {
+                    alert('✅ Nettoyage terminé!\n\nVeuillez recharger la page administrateur (index.html) pour voir les changements.');
+                }, 500);
+
+            } catch (error) {
+                console.error('Erreur lors du nettoyage:', error);
+                showResults(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        // Scanner automatiquement au chargement
+        window.addEventListener('load', () => {
+            setTimeout(scanData, 500);
+        });
+    </script>
+</body>
+</html>

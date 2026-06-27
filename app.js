@@ -765,12 +765,17 @@ function getRanking() {
   return state.participants
     .map((participant) => {
       const totalPoints = state.matches.reduce((sum, match) => {
-        return sum + computePredictionPoints(match.predictions[participant.id], match.actualScore);
+        const prediction = match.predictions[participant.id];
+        // Ignorer les matchs sans prédiction
+        if (!prediction) return sum;
+        return sum + computePredictionPoints(prediction, match.actualScore);
       }, 0);
 
       const exactScores = state.matches.filter((match) => {
         const prediction = match.predictions[participant.id];
+        // Vérifier que la prédiction existe avant d'accéder à ses propriétés
         return (
+          prediction &&
           toNumber(prediction.home) === toNumber(match.actualScore.home) &&
           toNumber(prediction.away) === toNumber(match.actualScore.away) &&
           toNumber(match.actualScore.home) !== null
@@ -779,7 +784,9 @@ function getRanking() {
 
       // Compter les pronostics corrects du premier but
       const correctFirstGoals = state.matches.filter((match) => {
-        return isFirstGoalCorrect(match.predictions[participant.id], match.actualScore);
+        const prediction = match.predictions[participant.id];
+        // Vérifier que la prédiction existe
+        return prediction && isFirstGoalCorrect(prediction, match.actualScore);
       }).length;
 
       return {

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vérifier Marta dans Firebase</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .check-btn {
+            background: #007bff;
+            color: white;
+        }
+        .check-btn:hover {
+            background: #0056b3;
+        }
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+        .delete-btn:hover {
+            background: #c82333;
+        }
+        .delete-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info-box {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        .participant-box {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-left: 3px solid #007bff;
+            border-radius: 3px;
+        }
+        .marta-box {
+            border-left-color: #dc3545;
+            background: #ffe6e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Vérifier Marta dans Firebase</h1>
+        
+        <div>
+            <button class="check-btn" onclick="checkFirebase()">🔍 Vérifier Firebase</button>
+            <button class="delete-btn" id="deleteBtn" onclick="deleteMartaFromFirebase()" disabled>🗑️ Supprimer Marta de Firebase</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    
+    <script>
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmlD7KCyJP_-eOm3dRIeFUOLk-AXzjxRo",
+            authDomain: "pronostics-coupe-du-monde.firebaseapp.com",
+            databaseURL: "https://pronostics-coupe-du-monde-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "pronostics-coupe-du-monde",
+            storageBucket: "pronostics-coupe-du-monde.firebasestorage.app",
+            messagingSenderId: "1069630545351",
+            appId: "1:1069630545351:web:e91e8e0e0e0e0e0e0e0e0e"
+        };
+
+        // Initialiser Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let martaKeys = [];
+
+        function showResults(message, type, html = '') {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `<p><strong>${message}</strong></p>${html}`;
+            resultsDiv.className = type;
+            resultsDiv.style.display = 'block';
+        }
+
+        async function checkFirebase() {
+            showResults('🔍 Vérification en cours...', 'info-box');
+            
+            try {
+                // Vérifier dans /predictions
+                const predictionsSnapshot = await database.ref('predictions').once('value');
+                const predictionsData = predictionsSnapshot.val();
+
+                martaKeys = [];
+                let html = '<h3>📊 Résultats de la recherche:</h3>';
+
+                if (!predictionsData) {
+                    showResults('✅ Aucune donnée dans Firebase /predictions', 'success');
+                    return;
+                }
+
+                // Chercher Marta dans les prédictions
+                html += '<h4>🔍 Dans /predictions:</h4>';
+                let foundInPredictions = false;
+
+                for (const [key, value] of Object.entries(predictionsData)) {
+                    if (value && value.participantName && 
+                        value.participantName.toLowerCase() === 'marta') {
+                        foundInPredictions = true;
+                        martaKeys.push(`predictions/${key}`);
+                        html += `<div class="participant-box marta-box">`;
+                        html += `<strong>🔑 Clé:</strong> predictions/${key}<br>`;
+                        html += `<strong>👤 Participant:</strong> ${value.participantName}<br>`;
+                        html += `<strong>📅 Date:</strong> ${value.timestamp || 'N/A'}<br>`;
+                        html += `<strong>📝 Pronostics:</strong> ${value.predictions ? value.predictions.length : 0}<br>`;
+                        html += `<pre>${JSON.stringify(value, null, 2).substring(0, 500)}...</pre>`;
+                        html += `</div>`;
+                    }
+                }
+
+                if (!foundInPredictions) {
+                    html += '<p style="color: green;">✅ Aucune donnée de Marta trouvée dans /predictions</p>';
+                }
+
+                // Vérifier aussi dans /participants si cette structure existe
+                const participantsSnapshot = await database.ref('participants').once('value');
+                if (participantsSnapshot.exists()) {
+                    const participantsData = participantsSnapshot.val();
+                    html += '<h4>🔍 Dans /participants:</h4>';
+                    let foundInParticipants = false;
+
+                    for (const [key, value] of Object.entries(participantsData)) {
+                        if (value && typeof value === 'object' && 
+                            (value.name?.toLowerCase() === 'marta' || key.toLowerCase() === 'marta')) {
+                            foundInParticipants = true;
+                            martaKeys.push(`participants/${key}`);
+                            html += `<div class="participant-box marta-box">`;
+                            html += `<strong>🔑 Clé:</strong> participants/${key}<br>`;
+                            html += `<pre>${JSON.stringify(value, null, 2)}</pre>`;
+                            html += `</div>`;
+                        }
+                    }
+
+                    if (!foundInParticipants) {
+                        html += '<p style="color: green;">✅ Aucune donnée de Marta trouvée dans /participants</p>';
+                    }
+                }
+
+                if (martaKeys.length > 0) {
+                    showResults(
+                        `⚠️ ${martaKeys.length} entrée(s) de Marta trouvée(s) dans Firebase!`,
+                        'warning',
+                        html
+                    );
+                    document.getElementById('deleteBtn').disabled = false;
+                } else {
+                    showResults(
+                        '✅ Aucune donnée de Marta trouvée dans Firebase',
+                        'success',
+                        html
+                    );
+                    document.getElementById('deleteBtn').disabled = true;
+                }
+
+            } catch (error) {
+                console.error('Erreur:', error);
+                showResults(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteMartaFromFirebase() {
+            if (martaKeys.length === 0) {
+                showResults('❌ Aucune donnée à supprimer. Vérifiez d\'abord Firebase.', 'error');
+                return;
+            }
+
+            const confirmed = confirm(
+                `⚠️ CONFIRMATION REQUISE\n\n` +
+                `${martaKeys.length} entrée(s) de Marta seront supprimées de Firebase:\n\n` +
+                martaKeys.map(k => `- ${k}`).join('\n') + '\n\n' +
+                `Cette action est IRRÉVERSIBLE.\n\n` +
+                `Voulez-vous continuer ?`
+            );
+
+            if (!confirmed) {
+                showResults('❌ Suppression annulée.', 'error');
+                return;
+            }
+
+            try {
+                showResults('🗑️ Suppression en cours...', 'info-box');
+
+                const deletePromises = martaKeys.map(key => 
+                    database.ref(key).remove()
+                );
+
+                await Promise.all(deletePromises);
+
+                let html = '<h3>✅ Suppression réussie!</h3>';
+                html += '<p><strong>Clés supprimées:</strong></p><ul>';
+                martaKeys.forEach(key => {
+                    html += `<li>✓ ${key}</li>`;
+                });
+                html += '</ul>';
+                html += '<p style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 5px;">';
+                html += '⚠️ <strong>Important:</strong> Rechargez la page administrateur (index.html) pour voir les changements.';
+                html += '</p>';
+
+                showResults(
+                    `✅ ${martaKeys.length} entrée(s) supprimée(s) de Firebase!`,
+                    'success',
+                    html
+                );
+
+                martaKeys = [];
+                document.getElementById('deleteBtn').disabled = true;
+
+            } catch (error) {
+                console.error('Erreur lors de la suppression:', error);
+                showResults(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        // Vérifier automatiquement au chargement
+        window.addEventListener('load', () => {
+            setTimeout(checkFirebase, 500);
+        });
+    </script>
+</body>
+</html>

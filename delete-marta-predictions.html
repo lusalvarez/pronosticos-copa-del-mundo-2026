@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supprimer les pronostics de Marta</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+        .warning {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+        .delete-btn:hover {
+            background: #c82333;
+        }
+        .cancel-btn {
+            background: #6c757d;
+            color: white;
+        }
+        .cancel-btn:hover {
+            background: #5a6268;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗑️ Supprimer les pronostics de Marta</h1>
+        
+        <div class="info">
+            <strong>ℹ️ Information:</strong>
+            <p>Ce script va supprimer tous les pronostics du participant "Marta" de la base de données Firebase.</p>
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Attention:</strong>
+            <p>Cette action est <strong>irréversible</strong>. Tous les pronostics de Marta seront définitivement supprimés.</p>
+        </div>
+
+        <div id="preview" style="display:none; margin-bottom: 20px;">
+            <h3>Pronostics trouvés pour Marta:</h3>
+            <ul id="predictionsList"></ul>
+        </div>
+
+        <div>
+            <button class="delete-btn" onclick="scanAndDelete()">🔍 Scanner et Supprimer</button>
+            <button class="cancel-btn" onclick="window.close()">❌ Annuler</button>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    
+    <script>
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmlD7KCyJP_-eOm3dRIeFUOLk-AXzjxRo",
+            authDomain: "pronostics-coupe-du-monde.firebaseapp.com",
+            databaseURL: "https://pronostics-coupe-du-monde-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "pronostics-coupe-du-monde",
+            storageBucket: "pronostics-coupe-du-monde.firebasestorage.app",
+            messagingSenderId: "1069630545351",
+            appId: "1:1069630545351:web:e91e8e0e0e0e0e0e0e0e0e"
+        };
+
+        // Initialiser Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = type;
+            statusDiv.style.display = 'block';
+        }
+
+        async function scanAndDelete() {
+            showStatus('🔍 Recherche des pronostics de Marta...', 'loading');
+            
+            try {
+                const predictionsRef = database.ref('predictions');
+                const snapshot = await predictionsRef.once('value');
+                
+                if (!snapshot.exists()) {
+                    showStatus('❌ Aucune donnée de pronostics trouvée.', 'error');
+                    return;
+                }
+
+                const predictions = snapshot.val();
+                const martaPredictions = [];
+                const deletionPromises = [];
+
+                // Scanner tous les matchs
+                for (const matchId in predictions) {
+                    if (predictions[matchId] && predictions[matchId]['Marta']) {
+                        martaPredictions.push({
+                            matchId: matchId,
+                            prediction: predictions[matchId]['Marta']
+                        });
+                        
+                        // Préparer la suppression
+                        deletionPromises.push(
+                            database.ref(`predictions/${matchId}/Marta`).remove()
+                        );
+                    }
+                }
+
+                if (martaPredictions.length === 0) {
+                    showStatus('✅ Aucun pronostic trouvé pour Marta. La base de données est déjà propre.', 'success');
+                    return;
+                }
+
+                // Afficher les pronostics trouvés
+                const previewDiv = document.getElementById('preview');
+                const predictionsList = document.getElementById('predictionsList');
+                predictionsList.innerHTML = '';
+                
+                martaPredictions.forEach(item => {
+                    const li = document.createElement('li');
+                    const pred = item.prediction;
+                    li.textContent = `Match ${item.matchId}: ${pred.home || '?'} - ${pred.away || '?'}`;
+                    if (pred.firstGoal) {
+                        li.textContent += ` (1er but: ${pred.firstGoal})`;
+                    }
+                    predictionsList.appendChild(li);
+                });
+                
+                previewDiv.style.display = 'block';
+
+                // Demander confirmation
+                const confirmed = confirm(
+                    `⚠️ CONFIRMATION REQUISE\n\n` +
+                    `${martaPredictions.length} pronostic(s) trouvé(s) pour Marta.\n\n` +
+                    `Voulez-vous vraiment supprimer tous ces pronostics ?\n\n` +
+                    `Cette action est IRRÉVERSIBLE.`
+                );
+
+                if (!confirmed) {
+                    showStatus('❌ Suppression annulée par l\'utilisateur.', 'error');
+                    return;
+                }
+
+                // Effectuer la suppression
+                showStatus(`🗑️ Suppression de ${martaPredictions.length} pronostic(s)...`, 'loading');
+                
+                await Promise.all(deletionPromises);
+
+                showStatus(
+                    `✅ Succès! ${martaPredictions.length} pronostic(s) de Marta ont été supprimés de la base de données.`,
+                    'success'
+                );
+
+                // Masquer le bouton de suppression
+                document.querySelector('.delete-btn').style.display = 'none';
+
+            } catch (error) {
+                console.error('Erreur lors de la suppression:', error);
+                showStatus(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
