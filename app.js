@@ -843,7 +843,7 @@ function deleteParticipant(participantId) {
   saveAndRender();
 }
 
-// Modifier les noms d'équipes d'un match de phase finale
+// Modifier les informations d'un match de phase finale (équipes, date et heure)
 async function editMatchTeams(match) {
   const newHomeTeam = prompt(
     `Modificar equipo local\n\nActual: ${match.homeTeam}\n\nIngresa el nuevo nombre del equipo local:`,
@@ -865,11 +865,36 @@ async function editMatchTeams(match) {
     return;
   }
   
+  // Demander la nouvelle date et heure
+  const currentDate = new Date(match.date);
+  const currentDateString = currentDate.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:mm
+  
+  const newDateString = prompt(
+    `Modificar fecha y hora del partido\n\n` +
+    `Actual: ${formatDate(match.date)}\n\n` +
+    `Ingresa la nueva fecha y hora (formato: YYYY-MM-DDTHH:mm):\n` +
+    `Ejemplo: 2026-07-19T21:00`,
+    currentDateString
+  );
+  
+  if (newDateString === null) return; // Annulé
+  
+  // Valider le format de la date
+  const newDate = new Date(newDateString);
+  if (isNaN(newDate.getTime())) {
+    alert("⚠️ Formato de fecha inválido. Usa el formato: YYYY-MM-DDTHH:mm");
+    return;
+  }
+  
   // Confirmer la modification
   const confirmMessage =
     `¿Confirmas la modificación?\n\n` +
+    `EQUIPOS:\n` +
     `Antes: ${match.homeTeam} vs ${match.awayTeam}\n` +
     `Después: ${newHomeTeam.trim()} vs ${newAwayTeam.trim()}\n\n` +
+    `FECHA Y HORA:\n` +
+    `Antes: ${formatDate(match.date)}\n` +
+    `Después: ${formatDate(newDate.toISOString())}\n\n` +
     `Esta modificación se sincronizará automáticamente con los participantes.`;
   
   if (!confirm(confirmMessage)) return;
@@ -877,8 +902,10 @@ async function editMatchTeams(match) {
   // Mettre à jour localement
   const oldHomeTeam = match.homeTeam;
   const oldAwayTeam = match.awayTeam;
+  const oldDate = match.date;
   match.homeTeam = newHomeTeam.trim();
   match.awayTeam = newAwayTeam.trim();
+  match.date = newDate.toISOString();
   
   saveAndRender();
   
@@ -893,22 +920,24 @@ async function editMatchTeams(match) {
       const firebaseMatches = snapshot.val();
       
       if (firebaseMatches) {
-        // Chercher le match correspondant dans Firebase
+        // Chercher le match correspondant dans Firebase (utiliser l'ancienne date)
         for (const [firebaseId, firebaseMatch] of Object.entries(firebaseMatches)) {
           if (firebaseMatch.homeTeam === oldHomeTeam &&
               firebaseMatch.awayTeam === oldAwayTeam &&
-              firebaseMatch.date === match.date) {
-            // Mettre à jour ce match
+              firebaseMatch.date === oldDate) {
+            // Mettre à jour ce match avec les nouvelles informations
             await matchesRef.child(firebaseId).update({
               homeTeam: match.homeTeam,
               awayTeam: match.awayTeam,
+              date: match.date,
               updatedAt: new Date().toISOString()
             });
             
-            console.log(`✅ Partido actualizado en Firebase: ${match.homeTeam} vs ${match.awayTeam}`);
+            console.log(`✅ Partido actualizado en Firebase: ${match.homeTeam} vs ${match.awayTeam} - ${formatDate(match.date)}`);
             alert(
-              `✅ ¡Equipos actualizados con éxito!\n\n` +
-              `${match.homeTeam} vs ${match.awayTeam}\n\n` +
+              `✅ ¡Partido actualizado con éxito!\n\n` +
+              `Equipos: ${match.homeTeam} vs ${match.awayTeam}\n` +
+              `Fecha: ${formatDate(match.date)}\n\n` +
               `Los participantes verán la actualización automáticamente.`
             );
             return;
@@ -917,21 +946,21 @@ async function editMatchTeams(match) {
       }
       
       alert(
-        `⚠️ Equipos actualizados localmente, pero no se encontró el partido en Firebase.\n\n` +
+        `⚠️ Partido actualizado localmente, pero no se encontró en Firebase.\n\n` +
         `Los participantes podrían no ver la actualización.`
       );
       
     } catch (error) {
       console.error("❌ Error al actualizar en Firebase:", error);
       alert(
-        `⚠️ Equipos actualizados localmente, pero hubo un error con Firebase.\n\n` +
+        `⚠️ Partido actualizado localmente, pero hubo un error con Firebase.\n\n` +
         `Los participantes podrían no ver la actualización.\n\n` +
         `Error: ${error.message}`
       );
     }
   } else {
     alert(
-      `✅ Equipos actualizados localmente.\n\n` +
+      `✅ Partido actualizado localmente.\n\n` +
       `⚠️ Firebase no está disponible. Los participantes no verán la actualización automáticamente.`
     );
   }
@@ -1193,7 +1222,7 @@ function renderAdminMatches() {
       
       if (isPlayoffMatch) {
         const editTeamsBtn = document.createElement("button");
-        editTeamsBtn.textContent = "✏️ Modificar equipos";
+        editTeamsBtn.textContent = "✏️ Modificar partido";
         editTeamsBtn.style.cssText = `
           margin-left: 1rem;
           padding: 0.3rem 0.8rem;
