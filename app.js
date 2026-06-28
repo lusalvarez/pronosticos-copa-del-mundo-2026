@@ -13,6 +13,17 @@ const API_KEY_STORAGE = "pronostics-api-key";
 // Détecter si on est sur la page de consultation publique
 const isConsultaPage = window.location.pathname.includes('consulta.html');
 
+// Fonction pour détecter si un match est en phase finale (à partir des 16èmes)
+function isPlayoffMatch(match) {
+  return match.stage && (
+    match.stage.includes("Dieciseisavos") ||
+    match.stage.includes("Octavos") ||
+    match.stage.includes("Cuartos") ||
+    match.stage.includes("Semifinales") ||
+    match.stage.includes("Finales")
+  );
+}
+
 // Variable globale pour stocker les participants qui ont envoyé des pronostics via Firebase
 let firebaseParticipants = new Set();
 
@@ -27,7 +38,7 @@ function withDefaultPredictions(data) {
   clone.matches.forEach((match) => {
     clone.participants.forEach((participant) => {
       if (!match.predictions[participant.id]) {
-        match.predictions[participant.id] = { home: "", away: "", firstGoal: "" };
+        match.predictions[participant.id] = { home: "", away: "", firstGoal: "", penaltyWinner: "" };
       }
       // Migration: ajouter firstGoal aux prédictions existantes si manquant
       if (match.predictions[participant.id] && !match.predictions[participant.id].hasOwnProperty('firstGoal')) {
@@ -223,7 +234,7 @@ if (!isConsultaPage) {
     // Fallback: ajout local uniquement si Firebase n'est pas disponible
     const predictions = {};
     state.participants.forEach((participant) => {
-      predictions[participant.id] = { home: "", away: "", firstGoal: "" };
+      predictions[participant.id] = { home: "", away: "", firstGoal: "", penaltyWinner: "" };
     });
 
     state.matches.push({
@@ -231,7 +242,7 @@ if (!isConsultaPage) {
       homeTeam,
       awayTeam,
       date,
-      actualScore: { home: null, away: null, firstGoalTeam: null },
+      actualScore: { home: null, away: null, firstGoalTeam: null, penaltyWinner: null },
       predictions,
     });
 
@@ -320,7 +331,7 @@ if (!isConsultaPage) {
         data.matches.forEach((match) => {
           const predictions = {};
           state.participants.forEach((participant) => {
-            predictions[participant.id] = { home: "", away: "", firstGoal: "" };
+            predictions[participant.id] = { home: "", away: "", firstGoal: "", penaltyWinner: "" };
           });
 
           const newMatch = {
@@ -330,7 +341,7 @@ if (!isConsultaPage) {
             date: match.date,
             stage: match.stage || "Fase de grupos",
             group: match.group || null,
-            actualScore: { home: null, away: null, firstGoalTeam: null },
+            actualScore: { home: null, away: null, firstGoalTeam: null, penaltyWinner: null },
             predictions,
           };
           
@@ -705,7 +716,7 @@ function getOutcome(home, away) {
   return "draw";
 }
 
-function computePredictionPoints(prediction, actualScore) {
+function computePredictionPoints(prediction, actualScore, match = null) {
   const predictedHome = toNumber(prediction.home);
   const predictedAway = toNumber(prediction.away);
   const actualHome = toNumber(actualScore.home);
@@ -720,16 +731,24 @@ function computePredictionPoints(prediction, actualScore) {
     return 0;
   }
 
+  let points = 0;
+
   // Points pour le score uniquement (pas de bonus pour le premier but)
   if (predictedHome === actualHome && predictedAway === actualAway) {
-    return 3; // Score exact
+    points = 3; // Score exact
+  } else if (getOutcome(predictedHome, predictedAway) === getOutcome(actualHome, actualAway)) {
+    points = 1; // Résultat correct
   }
 
-  if (getOutcome(predictedHome, predictedAway) === getOutcome(actualHome, actualAway)) {
-    return 1; // Résultat correct
+  // Bonus de +1 point pour le vainqueur aux penalties correct (matchs de phase finale uniquement)
+  if (match && isPlayoffMatch(match) &&
+      prediction.penaltyWinner &&
+      actualScore.penaltyWinner &&
+      prediction.penaltyWinner === actualScore.penaltyWinner) {
+    points += 1;
   }
 
-  return 0;
+  return points;
 }
 
 // Vérifier si le pronostic du premier but est correct
@@ -768,7 +787,7 @@ function getRanking() {
         const prediction = match.predictions[participant.id];
         // Ignorer les matchs sans prédiction
         if (!prediction) return sum;
-        return sum + computePredictionPoints(prediction, match.actualScore);
+        return sum + computePredictionPoints(prediction, match.actualScore, match);
       }, 0);
 
       const exactScores = state.matches.filter((match) => {
@@ -1219,7 +1238,7 @@ function renderAdminMatches() {
       matchTitleElement.textContent = `${match.homeTeam} - ${match.awayTeam}`;
       
       // Ajouter un bouton pour modifier les équipes si c'est un match de phase finale
-      const isPlayoffMatch = match.stage && (
+      const isPlayoff = match.stage && (
         match.stage.includes("Dieciseisavos") ||
         match.stage.includes("Octavos") ||
         match.stage.includes("Cuartos") ||
@@ -1227,7 +1246,7 @@ function renderAdminMatches() {
         match.stage.includes("Finales")
       );
       
-      if (isPlayoffMatch) {
+      if (isPlayoff) {
         const editTeamsBtn = document.createElement("button");
         editTeamsBtn.textContent = "✏️ Modificar partido";
         editTeamsBtn.style.cssText = `
@@ -1253,14 +1272,22 @@ function renderAdminMatches() {
       const actualHomeInput = fragment.querySelector(".actual-home");
       const actualAwayInput = fragment.querySelector(".actual-away");
       const actualFirstGoalSelect = fragment.querySelector(".actual-first-goal");
+      const actualPenaltyWinnerSelect = fragment.querySelector(".actual-penalty-winner");
       actualHomeInput.value = match.actualScore.home ?? "";
       actualAwayInput.value = match.actualScore.away ?? "";
       actualFirstGoalSelect.value = match.actualScore.firstGoalTeam ?? "";
+      actualPenaltyWinnerSelect.value = match.actualScore.penaltyWinner ?? "";
+      
+      // Masquer le champ penalty winner pour les matchs de phase de groupes
+      if (!isPlayoffMatch(match)) {
+        actualPenaltyWinnerSelect.parentElement.style.display = 'none';
+      }
 
       fragment.querySelector(".save-result").addEventListener("click", async () => {
         match.actualScore.home = actualHomeInput.value === "" ? null : Number(actualHomeInput.value);
         match.actualScore.away = actualAwayInput.value === "" ? null : Number(actualAwayInput.value);
         match.actualScore.firstGoalTeam = actualFirstGoalSelect.value === "" ? null : actualFirstGoalSelect.value;
+        match.actualScore.penaltyWinner = actualPenaltyWinnerSelect.value === "" ? null : actualPenaltyWinnerSelect.value;
         
         // Sauvegarder localement
         saveAndRender();
@@ -1276,7 +1303,8 @@ function renderAdminMatches() {
               actualScore: {
                 home: match.actualScore.home,
                 away: match.actualScore.away,
-                firstGoalTeam: match.actualScore.firstGoalTeam
+                firstGoalTeam: match.actualScore.firstGoalTeam,
+                penaltyWinner: match.actualScore.penaltyWinner
               },
               updatedAt: new Date().toISOString()
             });
@@ -1299,8 +1327,8 @@ function renderAdminMatches() {
       validParticipants.forEach((participant) => {
         const row = document.createElement("div");
         row.className = "prediction-row";
-        const prediction = match.predictions[participant.id] || { home: "", away: "", firstGoal: "" };
-        const points = computePredictionPoints(prediction, match.actualScore);
+        const prediction = match.predictions[participant.id] || { home: "", away: "", firstGoal: "", penaltyWinner: "" };
+        const points = computePredictionPoints(prediction, match.actualScore, match);
         
         // Vérifier si ce participant a envoyé ses pronostics via Firebase
         const isFromFirebase = firebaseParticipants.has(participant.name.toLowerCase());
@@ -1323,6 +1351,10 @@ function renderAdminMatches() {
         const firstGoalDisplay = !showPredictions && prediction.firstGoal ?
           "🔒" :
           (prediction.firstGoal === "home" ? "Local" : prediction.firstGoal === "away" ? "Visitante" : "-");
+        
+        const penaltyWinnerDisplay = !showPredictions && prediction.penaltyWinner ?
+          "🔒" :
+          (prediction.penaltyWinner === "home" ? "Local" : prediction.penaltyWinner === "away" ? "Visitante" : "-");
 
         row.innerHTML = `
           <div>
@@ -1354,6 +1386,17 @@ function renderAdminMatches() {
               `<input type="text" value="${firstGoalDisplay}" disabled style="text-align: center;" />`
             }
           </label>
+          <label style="${disabledStyle}; ${isPlayoffMatch(match) ? '' : 'display: none;'}">
+            Ganador en penales
+            ${showPredictions ?
+              `<select data-side="penaltyWinner" ${isDisabled}>
+                <option value="">-</option>
+                <option value="home" ${prediction.penaltyWinner === "home" ? "selected" : ""}>Local</option>
+                <option value="away" ${prediction.penaltyWinner === "away" ? "selected" : ""}>Visitante</option>
+              </select>` :
+              `<input type="text" value="${penaltyWinnerDisplay}" disabled style="text-align: center;" />`
+            }
+          </label>
           <div>
             <span class="${match.actualScore.home === null ? "status-pending" : "status-success"}">
               ${match.actualScore.home === null ? "Pendiente" : `${points} punto(s)`}
@@ -1366,7 +1409,7 @@ function renderAdminMatches() {
           const inputs = row.querySelectorAll("input[type='number']");
           inputs.forEach((input) => {
             input.addEventListener("change", () => {
-              const target = match.predictions[participant.id] || { home: "", away: "", firstGoal: "" };
+              const target = match.predictions[participant.id] || { home: "", away: "", firstGoal: "", penaltyWinner: "" };
               target[input.dataset.side] = input.value === "" ? "" : Number(input.value);
               match.predictions[participant.id] = target;
               saveAndRender();
@@ -1376,7 +1419,7 @@ function renderAdminMatches() {
           const selects = row.querySelectorAll("select");
           selects.forEach((select) => {
             select.addEventListener("change", () => {
-              const target = match.predictions[participant.id] || { home: "", away: "", firstGoal: "" };
+              const target = match.predictions[participant.id] || { home: "", away: "", firstGoal: "", penaltyWinner: "" };
               target[select.dataset.side] = select.value;
               match.predictions[participant.id] = target;
               saveAndRender();
@@ -1509,8 +1552,8 @@ function generateWhatsAppSummary(dayIndex = 0) {
     
     // Pronostics de chaque participant (une ligne par participant)
     state.participants.forEach((participant) => {
-      const prediction = match.predictions[participant.id] || { home: "", away: "", firstGoal: "" };
-      const points = computePredictionPoints(prediction, actualScore);
+      const prediction = match.predictions[participant.id] || { home: "", away: "", firstGoal: "", penaltyWinner: "" };
+      const points = computePredictionPoints(prediction, actualScore, match);
       const firstGoalCorrect = isFirstGoalCorrect(prediction, actualScore);
       
       let status = "";
@@ -1690,8 +1733,8 @@ function renderPublicMatches() {
       const showPredictions = isLocked;
 
       state.participants.forEach((participant) => {
-        const prediction = match.predictions[participant.id] || { home: "", away: "", firstGoal: "" };
-        const points = computePredictionPoints(prediction, match.actualScore);
+        const prediction = match.predictions[participant.id] || { home: "", away: "", firstGoal: "", penaltyWinner: "" };
+        const points = computePredictionPoints(prediction, match.actualScore, match);
         const firstGoalCorrect = isFirstGoalCorrect(prediction, match.actualScore);
         
         // Vérifier si ce participant a envoyé un pronostic pour ce match via Firebase
@@ -1801,7 +1844,8 @@ function listenToFirebaseUpdates() {
           actualScore: {
             home: matchData.actualScore?.home ?? null,
             away: matchData.actualScore?.away ?? null,
-            firstGoalTeam: matchData.actualScore?.firstGoalTeam ?? null
+            firstGoalTeam: matchData.actualScore?.firstGoalTeam ?? null,
+            penaltyWinner: matchData.actualScore?.penaltyWinner ?? null
           },
           // Préserver les prédictions existantes ou initialiser à vide
           predictions: existingMatch?.predictions || {}
@@ -1812,7 +1856,7 @@ function listenToFirebaseUpdates() {
       state.participants.forEach(participant => {
         matchesArray.forEach(match => {
           if (!match.predictions[participant.id]) {
-            match.predictions[participant.id] = { home: "", away: "", firstGoal: "" };
+            match.predictions[participant.id] = { home: "", away: "", firstGoal: "", penaltyWinner: "" };
           }
         });
       });

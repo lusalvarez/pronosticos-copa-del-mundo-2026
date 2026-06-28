@@ -165,7 +165,18 @@ function getOutcome(home, away) {
   return "draw";
 }
 
-function computePredictionPoints(prediction, actualScore) {
+// Fonction pour détecter si un match est en phase finale (À partir des 16èmes)
+function isPlayoffMatch(match) {
+  return match.stage && (
+    match.stage.includes("Dieciseisavos") ||
+    match.stage.includes("Octavos") ||
+    match.stage.includes("Cuartos") ||
+    match.stage.includes("Semifinales") ||
+    match.stage.includes("Finales")
+  );
+}
+
+function computePredictionPoints(prediction, actualScore, match = null) {
   // Vérifier que prediction existe
   if (!prediction) return 0;
   
@@ -183,15 +194,23 @@ function computePredictionPoints(prediction, actualScore) {
     return 0;
   }
 
+  let points = 0;
+
   if (predictedHome === actualHome && predictedAway === actualAway) {
-    return 3; // Score exact
+    points = 3; // Score exact
+  } else if (getOutcome(predictedHome, predictedAway) === getOutcome(actualHome, actualAway)) {
+    points = 1; // Résultat correct
   }
 
-  if (getOutcome(predictedHome, predictedAway) === getOutcome(actualHome, actualAway)) {
-    return 1; // Résultat correct
+  // Bonus de +1 point pour le vainqueur aux penalties correct (matchs de phase finale uniquement)
+  if (match && isPlayoffMatch(match) &&
+      prediction.penaltyWinner &&
+      actualScore.penaltyWinner &&
+      prediction.penaltyWinner === actualScore.penaltyWinner) {
+    points += 1;
   }
 
-  return 0;
+  return points;
 }
 
 function isFirstGoalCorrect(prediction, actualScore) {
@@ -216,7 +235,7 @@ function getRanking() {
         const prediction = match.predictions[participant.id];
         // Ignorer les matchs sans prédiction
         if (!prediction) return sum;
-        return sum + computePredictionPoints(prediction, match.actualScore);
+        return sum + computePredictionPoints(prediction, match.actualScore, match);
       }, 0);
 
       const exactScores = state.matches.filter((match) => {
@@ -424,10 +443,13 @@ function renderPublicMatches() {
       if (match.actualScore.home === null) {
         resultBadge.textContent = "Resultado pendiente";
       } else {
-        const firstGoalText = match.actualScore.firstGoalTeam 
+        const firstGoalText = match.actualScore.firstGoalTeam
           ? ` | ⚽ Primer gol: ${match.actualScore.firstGoalTeam === 'home' ? match.homeTeam : match.awayTeam}`
           : '';
-        resultBadge.textContent = `Resultado: ${match.actualScore.home} - ${match.actualScore.away}${firstGoalText}`;
+        const penaltyWinnerText = match.actualScore.penaltyWinner && isPlayoffMatch(match)
+          ? ` | 🎯 Ganador en penales: ${match.actualScore.penaltyWinner === 'home' ? match.homeTeam : match.awayTeam}`
+          : '';
+        resultBadge.textContent = `Resultado: ${match.actualScore.home} - ${match.actualScore.away}${firstGoalText}${penaltyWinnerText}`;
       }
 
       const predictionsWrapper = fragment.querySelector(".public-predictions");
@@ -442,8 +464,8 @@ function renderPublicMatches() {
       console.log(`🔍 [consulta-v2.js] Match ${match.homeTeam} vs ${match.awayTeam}: isLocked=${isLocked}, showPredictions=${showPredictions}`);
 
       state.participants.forEach((participant) => {
-        const prediction = match.predictions[participant.id] || { home: "", away: "", firstGoal: "" };
-        const points = computePredictionPoints(prediction, match.actualScore);
+        const prediction = match.predictions[participant.id] || { home: "", away: "", firstGoal: "", penaltyWinner: "" };
+        const points = computePredictionPoints(prediction, match.actualScore, match);
         const firstGoalCorrect = isFirstGoalCorrect(prediction, match.actualScore);
         
         // Vérifier si ce participant a envoyé un pronostic pour ce match via Firebase
@@ -471,6 +493,20 @@ function renderPublicMatches() {
           firstGoalDisplay = '🔒';
         }
         
+        let penaltyWinnerDisplay = '';
+        if (isPlayoffMatch(match)) {
+          if (showPredictions && prediction.penaltyWinner) {
+            const penaltyWinnerTeamName = prediction.penaltyWinner === 'home' ? match.homeTeam : match.awayTeam;
+            penaltyWinnerDisplay = `🎯 ${penaltyWinnerTeamName}`;
+            if (match.actualScore.penaltyWinner) {
+              const penaltyWinnerCorrect = prediction.penaltyWinner === match.actualScore.penaltyWinner;
+              penaltyWinnerDisplay += penaltyWinnerCorrect ? ' ✅' : ' ❌';
+            }
+          } else if (!showPredictions && prediction.penaltyWinner) {
+            penaltyWinnerDisplay = '🔒';
+          }
+        }
+        
         row.innerHTML = `
           <div>
             <strong>${participant.name}</strong>
@@ -480,6 +516,9 @@ function renderPublicMatches() {
           <div>${showPredictions ? (prediction.away === "" || prediction.away === null || prediction.away === undefined ? "-" : prediction.away) : (hasAwayPrediction ? awayValue : "-")}</div>
           <div>
             <span class="small-text">${firstGoalDisplay || '-'}</span>
+          </div>
+          <div>
+            <span class="small-text">${penaltyWinnerDisplay || '-'}</span>
           </div>
           <div>
             <span class="${match.actualScore.home === null ? "status-pending" : "status-success"}">
@@ -600,7 +639,8 @@ function listenToFirebaseUpdates() {
           actualScore: {
             home: matchData.actualScore?.home ?? null,
             away: matchData.actualScore?.away ?? null,
-            firstGoalTeam: matchData.actualScore?.firstGoalTeam ?? null
+            firstGoalTeam: matchData.actualScore?.firstGoalTeam ?? null,
+            penaltyWinner: matchData.actualScore?.penaltyWinner ?? null
           },
           predictions: existingMatch?.predictions || {}
         };
@@ -650,6 +690,9 @@ function listenToFirebaseUpdates() {
             const prediction = predictionData.prediction;
             if (prediction && !prediction.hasOwnProperty('firstGoal')) {
               prediction.firstGoal = "";
+            }
+            if (prediction && !prediction.hasOwnProperty('penaltyWinner')) {
+              prediction.penaltyWinner = "";
             }
             
             // Marquer ce participant comme ayant envoyé un pronostic pour ce match

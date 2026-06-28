@@ -33,6 +33,7 @@ function normalizeParticipantId(name) {
     .replace(/\]/g, "_rbracket_")
     .replace(/\//g, "_slash_")
     .replace(/@/g, "_at_");
+}
 
 // Fonction pour détecter si un match est en phase finale (à partir des 16èmes)
 function isPlayoffMatch(match) {
@@ -43,7 +44,6 @@ function isPlayoffMatch(match) {
     match.stage.includes("Semifinales") ||
     match.stage.includes("Finales")
   );
-}
 }
 
 function findLegacyPasswordMatch(rawPassword, passwordHash) {
@@ -1756,11 +1756,12 @@ function renderMatches() {
           dayPredictions[index] = {
             home: pred.home,
             away: pred.away,
-            firstGoal: pred.firstGoal || ""
+            firstGoal: pred.firstGoal || "",
+            penaltyWinner: pred.penaltyWinner || ""
           };
         } else {
           // Ajouter une prédiction vide pour les matchs non remplis
-          dayPredictions[index] = { home: "", away: "", firstGoal: "" };
+          dayPredictions[index] = { home: "", away: "", firstGoal: "", penaltyWinner: "" };
         }
       });
       

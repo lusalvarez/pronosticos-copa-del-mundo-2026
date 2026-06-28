@@ -116,6 +116,14 @@
                 <option value="away">Visitante</option>
               </select>
             </label>
+            <label>
+              Ganador en penales
+              <select class="actual-penalty-winner">
+                <option value="">Sin definir</option>
+                <option value="home">Local</option>
+                <option value="away">Visitante</option>
+              </select>
+            </label>
             <button type="button" class="save-result">Guardar el resultado</button>
           </div>
         </div>
@@ -146,7 +154,7 @@
     <script src="firebase-config.js"></script>
     
     <!-- matches-data.js n'est plus nécessaire, on utilise Firebase -->
-    <script src="app.js?v=20260627editmatch1"></script>
+    <script src="app.js?v=20260628-penalties"></script>
     <script src="auto-update-results.js"></script>
   </body>
 </html>
