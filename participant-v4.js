@@ -1291,7 +1291,12 @@ function groupMatchesByDay() {
 const FREEZE_TIMESTAMPS = {
   day1: 1781118000000,   // 10 juin 2026 21:00 (France) - 24h avant match du 11 juin 21:00
   day2: 1781712000000,   // 17 juin 2026 18:00 (France) - 24h avant match du 18 juin 18:00
-  day3: 1782241200000    // 23 juin 2026 21:00 (France) - 24h avant match du 24 juin 21:00
+  day3: 1782241200000,   // 23 juin 2026 21:00 (France) - 24h avant match du 24 juin 21:00
+  day4: 1782662400000,   // 27 juin 2026 21:00 (France) - 24h avant 16èmes de finale (28 juin 21:00)
+  day5: 1783101600000,   // 03 juillet 2026 19:00 (France) - 24h avant 8èmes de finale (04 juillet 19:00)
+  day6: 1783648800000,   // 08 juillet 2026 22:00 (France) - 24h avant quarts de finale (09 juillet 22:00)
+  day7: 1784080800000,   // 13 juillet 2026 21:00 (France) - 24h avant demi-finales (14 juillet 21:00)
+  day8: 1784512800000    // 17 juillet 2026 23:00 (France) - 24h avant finales (18 juillet 23:00)
 };
 
 function isDayLocked(dayMatches) {
