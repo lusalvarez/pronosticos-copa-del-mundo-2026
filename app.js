@@ -1147,11 +1147,19 @@ function renderAdminMatches() {
       dayHeader.style.opacity = '1';
     });
     
-    // Ajouter un bouton WhatsApp dans l'en-tête
+    // Conteneur pour les boutons WhatsApp
+    const whatsappBtnsContainer = document.createElement("div");
+    whatsappBtnsContainer.style.cssText = `
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    `;
+    
+    // Bouton WhatsApp résumé (avec résultats uniquement)
     const whatsappBtn = document.createElement("button");
     whatsappBtn.textContent = "📱 Copiar resumen WhatsApp";
     whatsappBtn.style.cssText = `
-      margin-top: 1rem;
       padding: 0.75rem 1.5rem;
       background: #25D366;
       color: white;
@@ -1162,7 +1170,25 @@ function renderAdminMatches() {
       font-size: 0.95rem;
     `;
     whatsappBtn.addEventListener("click", () => copyWhatsAppSummary(dayIndex));
-    dayHeader.appendChild(whatsappBtn);
+    whatsappBtnsContainer.appendChild(whatsappBtn);
+    
+    // Bouton WhatsApp pronos complets (tous les matchs)
+    const detailedWhatsappBtn = document.createElement("button");
+    detailedWhatsappBtn.textContent = "📋 Copiar pronósticos completos";
+    detailedWhatsappBtn.style.cssText = `
+      padding: 0.75rem 1.5rem;
+      background: #128C7E;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.95rem;
+    `;
+    detailedWhatsappBtn.addEventListener("click", () => copyDetailedWhatsAppSummary(dayIndex));
+    whatsappBtnsContainer.appendChild(detailedWhatsappBtn);
+    
+    dayHeader.appendChild(whatsappBtnsContainer);
     
     // Ajouter un bouton pour décaler le freeze (toujours visible pour permettre la configuration)
     const delayFreezeBtn = document.createElement("button");
@@ -1548,6 +1574,13 @@ function generateWhatsAppSummary(dayIndex = 0) {
       const firstGoalShort = actualScore.firstGoalTeam === "home" ? homeShort : awayShort;
       text += ` 🎯${firstGoalShort}`;
     }
+    
+    // Vainqueur aux penalties (si défini pour les phases finales)
+    if (actualScore.penaltyWinner && isPlayoffMatch(match)) {
+      const penaltyShort = actualScore.penaltyWinner === match.homeTeam ? homeShort : awayShort;
+      text += ` 🏆${penaltyShort}`;
+    }
+    
     text += "\n";
     
     // Pronostics de chaque participant (une ligne par participant)
@@ -1556,10 +1589,13 @@ function generateWhatsAppSummary(dayIndex = 0) {
       const points = computePredictionPoints(prediction, actualScore, match);
       const firstGoalCorrect = isFirstGoalCorrect(prediction, actualScore);
       
+      // Icône basée sur les points
       let status = "";
-      if (points === 3) status = "✅";
-      else if (points === 1) status = "⚠️";
-      else status = "❌";
+      if (points === 4) status = "🌟"; // Score exact + bon vainqueur penalties
+      else if (points === 3) status = "✅"; // Score exact
+      else if (points === 2) status = "🟢"; // Nul + bon vainqueur penalties
+      else if (points === 1) status = "⚠️"; // Bon résultat OU bon vainqueur penalties
+      else status = "❌"; // 0 point
       
       const firstGoalStatus = firstGoalCorrect ? "🎯" : "❌";
       
@@ -1567,16 +1603,150 @@ function generateWhatsAppSummary(dayIndex = 0) {
       const nameParts = participant.name.split(' ');
       const shortName = nameParts[0].substring(0, 8);
       
-      text += ` ${shortName}: ${prediction.home}-${prediction.away}${status}${points}p ${firstGoalStatus}\n`;
+      text += ` ${shortName}: ${prediction.home}-${prediction.away}${status}${points}p`;
+      
+      // Afficher le prono du vainqueur aux penalties si c'est un match de phase finale
+      if (isPlayoffMatch(match) && prediction.penaltyWinner) {
+        const predPenaltyShort = prediction.penaltyWinner === match.homeTeam ? homeShort :
+                                 prediction.penaltyWinner === match.awayTeam ? awayShort :
+                                 prediction.penaltyWinner.substring(0, 3).toUpperCase();
+        const penaltyCorrect = prediction.penaltyWinner === actualScore.penaltyWinner;
+        text += ` 🏆${predPenaltyShort}${penaltyCorrect ? '✅' : '❌'}`;
+      }
+      
+      text += ` ${firstGoalStatus}\n`;
     });
     
     text += "\n";
   });
   
-  text += "✅=3p ⚠️=1p ❌=0p 🎯=1ergol\n";
+  text += "🌟=4p ✅=3p 🟢=2p ⚠️=1p ❌=0p 🎯=1ergol 🏆=penalties\n";
   
   return text;
 }
+// Générer un récapitulatif détaillé WhatsApp avec TOUS les pronos (même sans résultats)
+function generateDetailedWhatsAppSummary(dayIndex = 0) {
+  console.log("🔍 generateDetailedWhatsAppSummary appelée avec dayIndex:", dayIndex);
+  
+  const dayGroups = groupMatchesByDay(state.matches);
+  
+  if (dayIndex >= dayGroups.length) {
+    alert("❌ Journée invalide");
+    return null;
+  }
+  
+  const dayGroup = dayGroups[dayIndex];
+  const dayNumber = dayIndex + 1;
+  
+  let text = `⚽ PRONÓSTICOS - JORNADA ${dayNumber}\n`;
+  text += `${dayGroup.name}\n`;
+  text += `${'='.repeat(40)}\n\n`;
+  
+  // Parcourir tous les matchs de la journée
+  dayGroup.matches.forEach((match, index) => {
+    const matchDate = new Date(match.date);
+    const dateStr = matchDate.toLocaleDateString('es-ES', { 
+      weekday: 'short', 
+      day: '2-digit', 
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    
+    text += `🏟️ PARTIDO ${index + 1}\n`;
+    text += `${match.homeTeam} vs ${match.awayTeam}\n`;
+    text += `📅 ${dateStr}\n`;
+    
+    if (match.stage) {
+      text += `🏆 ${match.stage}\n`;
+    }
+    
+    text += `${'-'.repeat(40)}\n`;
+    
+    // Obtenir tous les pronos pour ce match
+    const matchPredictions = [];
+    state.participants.forEach((participant) => {
+      const prediction = match.predictions[participant.id];
+      if (prediction && prediction.home !== "" && prediction.away !== "") {
+        matchPredictions.push({
+          name: participant.name,
+          home: prediction.home,
+          away: prediction.away,
+          firstGoal: prediction.firstGoal || null,
+          penaltyWinner: prediction.penaltyWinner || null
+        });
+      }
+    });
+    
+    // Trier par nom
+    matchPredictions.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Afficher les pronos
+    if (matchPredictions.length > 0) {
+      matchPredictions.forEach(pred => {
+        text += `👤 ${pred.name}: ${pred.home}-${pred.away}`;
+        
+        // Ajouter le premier but si défini
+        if (pred.firstGoal) {
+          const firstGoalTeam = pred.firstGoal === 'home' ? match.homeTeam : match.awayTeam;
+          text += ` (1er: ${firstGoalTeam})`;
+        }
+        
+        // Ajouter le vainqueur aux penalties si défini (pour les phases finales)
+        if (pred.penaltyWinner && isPlayoffMatch(match)) {
+          text += ` (Pen: ${pred.penaltyWinner})`;
+        }
+        
+        text += `\n`;
+      });
+    } else {
+      text += `⚠️ Sin pronósticos\n`;
+    }
+    
+    text += `\n`;
+  });
+  
+  text += `${'='.repeat(40)}\n`;
+  text += `📊 Total de partidos: ${dayGroup.matches.length}\n`;
+  text += `👥 Participantes: ${state.participants.length}\n`;
+  
+  return text;
+}
+
+// Copier le récapitulatif détaillé WhatsApp dans le presse-papiers
+function copyDetailedWhatsAppSummary(dayIndex = 0) {
+  console.log("🔍 copyDetailedWhatsAppSummary appelée avec dayIndex:", dayIndex);
+  
+  const text = generateDetailedWhatsAppSummary(dayIndex);
+  
+  if (!text) {
+    console.error("❌ Pas de texte généré");
+    return;
+  }
+  
+  // Copier dans le presse-papiers
+  navigator.clipboard.writeText(text).then(() => {
+    alert("✅ ¡Pronósticos completos copiados al portapapeles!\n\nPuedes pegarlos directamente en WhatsApp.");
+  }).catch((err) => {
+    // Fallback si clipboard API ne fonctionne pas
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    
+    try {
+      document.execCommand("copy");
+      alert("✅ ¡Pronósticos completos copiados al portapapeles!\n\nPuedes pegarlos directamente en WhatsApp.");
+    } catch (err) {
+      alert("❌ Error al copiar. Por favor, copia manualmente:\n\n" + text);
+    }
+    
+    document.body.removeChild(textarea);
+  });
+}
+
 
 // Copier le récapitulatif WhatsApp dans le presse-papiers
 function copyWhatsAppSummary(dayIndex = 0) {

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supprimer les décalages de freeze</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .warning {
+            background-color: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        .instructions {
+            background-color: #e3f2fd;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 10px 0;
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .copy-btn:hover {
+            background-color: #45a049;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border-left: 3px solid #007bff;
+        }
+        .step-number {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Supprimer les décalages de freeze</h1>
+        
+        <div class="warning">
+            <strong>⚠️ Attention :</strong><br>
+            Cette opération va supprimer tous les décalages de freeze (+25h, +22h, +13h, etc.) dans Firebase.
+            Les timestamps reviendront à -24h avant chaque match.
+        </div>
+
+        <div class="instructions">
+            <h2>📋 Instructions</h2>
+            <p>Suivez ces étapes pour supprimer les décalages :</p>
+
+            <div class="step">
+                <span class="step-number">1</span>
+                <strong>Ouvrez la console du navigateur</strong><br>
+                Appuyez sur <kbd>F12</kbd> puis cliquez sur l'onglet <strong>Console</strong>
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                <strong>Copiez et collez cette commande dans la console :</strong><br>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode('code1')">Copier</button>
+                    <code id="code1">firebase.database().ref('freezeDelays').remove().then(() => console.log('✅ Décalages supprimés avec succès')).catch(err => console.error('❌ Erreur:', err));</code>
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                <strong>Appuyez sur Entrée</strong><br>
+                Vous devriez voir le message "✅ Décalages supprimés avec succès"
+            </div>
+
+            <div class="step">
+                <span class="step-number">4</span>
+                <strong>Vérifiez que la suppression a fonctionné :</strong><br>
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode('code2')">Copier</button>
+                    <code id="code2">firebase.database().ref('freezeDelays').once('value').then(snap => console.log('Décalages restants:', snap.val()));</code>
+                </div>
+                Résultat attendu : <code>Décalages restants: null</code>
+            </div>
+
+            <div class="step">
+                <span class="step-number">5</span>
+                <strong>Actualisez les pages</strong><br>
+                Actualisez <strong>participant.html</strong> et <strong>consulta.html</strong> avec <kbd>Ctrl+Shift+R</kbd> pour appliquer les changements.
+            </div>
+        </div>
+
+        <div class="warning">
+            <strong>💡 Alternative :</strong><br>
+            Si la commande ne fonctionne pas, vous pouvez aussi supprimer manuellement dans la console Firebase :
+            <ol>
+                <li>Allez sur <a href="https://console.firebase.google.com/project/pronostics-coupe-du-monde/database/pronostics-coupe-du-monde-default-rtdb/data" target="_blank">Firebase Console</a></li>
+                <li>Naviguez vers <strong>Realtime Database</strong></li>
+                <li>Trouvez le nœud <strong>freezeDelays</strong></li>
+                <li>Cliquez sur les 3 points → <strong>Delete</strong></li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <script>
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDGCbB5tm_Im-JX1kVRGb5KqTHX-KqBa_I",
+            authDomain: "pronostics-coupe-du-monde.firebaseapp.com",
+            databaseURL: "https://pronostics-coupe-du-monde-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "pronostics-coupe-du-monde",
+            storageBucket: "pronostics-coupe-du-monde.firebasestorage.app",
+            messagingSenderId: "1059758706486",
+            appId: "1:1059758706486:web:e4a8e0e0e0e0e0e0e0e0e0"
+        };
+
+        // Initialiser Firebase
+        firebase.initializeApp(firebaseConfig);
+        console.log('✅ Firebase initialisé - Vous pouvez maintenant utiliser les commandes ci-dessus');
+
+        function copyCode(elementId) {
+            const code = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copié !';
+                btn.style.backgroundColor = '#4CAF50';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.backgroundColor = '#4CAF50';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

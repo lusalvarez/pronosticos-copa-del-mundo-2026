@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resumen WhatsApp - Pronósticos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .controls {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+        select, button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            margin-right: 10px;
+        }
+        select {
+            min-width: 200px;
+        }
+        button {
+            background-color: #25D366;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #128C7E;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #output {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border: 2px solid #25D366;
+            display: none;
+        }
+        #output.show {
+            display: block;
+        }
+        .whatsapp-text {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.6;
+            max-height: 500px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+        .copy-btn {
+            background-color: #007bff;
+            padding: 12px 30px;
+        }
+        .copy-btn:hover {
+            background-color: #0056b3;
+        }
+        .info {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .match-group {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 Resumen WhatsApp - Pronósticos por Jornada</h1>
+        
+        <div class="info">
+            <strong>ℹ️ Información:</strong><br>
+            Este script genera un resumen de todos los pronósticos de una jornada específica, 
+            formateado para compartir fácilmente por WhatsApp.
+        </div>
+
+        <div class="controls">
+            <label for="daySelect">Selecciona la jornada:</label>
+            <select id="daySelect">
+                <option value="">-- Selecciona una jornada --</option>
+                <option value="1">Jornada 1 - Fase de grupos (11 junio)</option>
+                <option value="2">Jornada 2 - Fase de grupos (18 junio)</option>
+                <option value="3">Jornada 3 - Fase de grupos (24 junio)</option>
+                <option value="4">Jornada 4 - Dieciseisavos de final (28 junio)</option>
+                <option value="5">Jornada 5 - Octavos de final (04 julio)</option>
+                <option value="6">Jornada 6 - Cuartos de final (09 julio)</option>
+                <option value="7">Jornada 7 - Semifinales (14 julio)</option>
+                <option value="8">Jornada 8 - Final (18 julio)</option>
+            </select>
+            <button onclick="generateSummary()" id="generateBtn">Generar Resumen</button>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            ⏳ Cargando pronósticos...
+        </div>
+
+        <div id="output">
+            <h3>📋 Resumen generado:</h3>
+            <div class="whatsapp-text" id="whatsappText"></div>
+            <button class="copy-btn" onclick="copyToClipboard()">📋 Copiar para WhatsApp</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <script>
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDGCbB5tm_Im-JX1kVRGb5KqTHX-KqBa_I",
+            authDomain: "pronostics-coupe-du-monde.firebaseapp.com",
+            databaseURL: "https://pronostics-coupe-du-monde-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "pronostics-coupe-du-monde",
+            storageBucket: "pronostics-coupe-du-monde.firebasestorage.app",
+            messagingSenderId: "1059758706486",
+            appId: "1:1059758706486:web:e4a8e0e0e0e0e0e0e0e0e0"
+        };
+
+        // Initialiser Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const options = { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' };
+            return date.toLocaleDateString('es-ES', options);
+        }
+
+        function isPlayoffMatch(stage) {
+            const playoffStages = [
+                'Dieciseisavos de final',
+                'Octavos de final',
+                'Cuartos de final',
+                'Semifinales',
+                'Finales'
+            ];
+            return playoffStages.includes(stage);
+        }
+
+        // Función con timeout
+        function withTimeout(promise, ms) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Timeout: Firebase no responde después de ' + (ms/1000) + ' segundos')), ms)
+                )
+            ]);
+        }
+
+        async function generateSummary() {
+            const daySelect = document.getElementById('daySelect');
+            const selectedDay = daySelect.value;
+            
+            if (!selectedDay) {
+                alert('Por favor selecciona una jornada');
+                return;
+            }
+
+            const generateBtn = document.getElementById('generateBtn');
+            const loading = document.getElementById('loading');
+            const output = document.getElementById('output');
+            const whatsappText = document.getElementById('whatsappText');
+
+            generateBtn.disabled = true;
+            loading.style.display = 'block';
+            output.classList.remove('show');
+
+            try {
+                console.log('🔄 Cargando partidos...');
+                // Cargar partidos con timeout de 10 segundos
+                const matchesSnapshot = await withTimeout(
+                    database.ref('matches').once('value'),
+                    10000
+                );
+                console.log('✅ Partidos cargados');
+                const matches = matchesSnapshot.val() || [];
+                
+                // Filtrar partidos de la jornada seleccionada
+                const dayMatches = matches.filter(m => m.day === parseInt(selectedDay));
+                
+                if (dayMatches.length === 0) {
+                    alert('No hay partidos para esta jornada');
+                    return;
+                }
+
+                // Cargar pronósticos de todos los participantes
+                console.log('🔄 Cargando pronósticos...');
+                const predictionsSnapshot = await withTimeout(
+                    database.ref('predictions').once('value'),
+                    10000
+                );
+                console.log('✅ Pronósticos cargados');
+                const allPredictions = predictionsSnapshot.val() || {};
+
+                // Generar resumen
+                let summary = `⚽ PRONÓSTICOS - JORNADA ${selectedDay}\n`;
+                summary += `${daySelect.options[daySelect.selectedIndex].text}\n`;
+                summary += `${'='.repeat(40)}\n\n`;
+
+                // Agrupar por partido
+                dayMatches.forEach((match, index) => {
+                    const matchDate = formatDate(match.date);
+                    summary += `🏟️ PARTIDO ${index + 1}\n`;
+                    summary += `${match.homeTeam} vs ${match.awayTeam}\n`;
+                    summary += `📅 ${matchDate}\n`;
+                    
+                    if (match.stage) {
+                        summary += `🏆 ${match.stage}\n`;
+                    }
+                    
+                    summary += `${'-'.repeat(40)}\n`;
+
+                    // Obtener pronósticos de todos los participantes para este partido
+                    const matchPredictions = [];
+                    
+                    for (const [participantId, predictions] of Object.entries(allPredictions)) {
+                        const prediction = predictions[match.originalIndex];
+                        if (prediction) {
+                            matchPredictions.push({
+                                name: participantId,
+                                home: prediction.homeScore,
+                                away: prediction.awayScore,
+                                penalty: prediction.penaltyWinner || null
+                            });
+                        }
+                    }
+
+                    // Ordenar por nombre
+                    matchPredictions.sort((a, b) => a.name.localeCompare(b.name));
+
+                    // Mostrar pronósticos
+                    if (matchPredictions.length > 0) {
+                        matchPredictions.forEach(pred => {
+                            summary += `👤 ${pred.name}: ${pred.home}-${pred.away}`;
+                            if (pred.penalty && isPlayoffMatch(match.stage)) {
+                                summary += ` (Pen: ${pred.penalty})`;
+                            }
+                            summary += `\n`;
+                        });
+                    } else {
+                        summary += `⚠️ Sin pronósticos\n`;
+                    }
+                    
+                    summary += `\n`;
+                });
+
+                summary += `${'='.repeat(40)}\n`;
+                summary += `📊 Total de partidos: ${dayMatches.length}\n`;
+                summary += `👥 Participantes: ${Object.keys(allPredictions).length}\n`;
+
+                // Mostrar resultado
+                whatsappText.textContent = summary;
+                output.classList.add('show');
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al generar el resumen: ' + error.message);
+            } finally {
+                generateBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+
+        function copyToClipboard() {
+            const text = document.getElementById('whatsappText').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ ¡Copiado!';
+                btn.style.backgroundColor = '#4CAF50';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.backgroundColor = '#007bff';
+                }, 2000);
+            }).catch(err => {
+                alert('Error al copiar: ' + err.message);
+            });
+        }
+    </script>
+</body>
+</html>

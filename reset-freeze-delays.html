@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réinitialiser les décalages de freeze</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .info {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+        .warning {
+            background-color: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        button {
+            background-color: #f44336;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #d32f2f;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        #status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        #status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .log {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            padding: 5px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Réinitialiser les décalages de freeze</h1>
+        
+        <div class="info">
+            <strong>ℹ️ Information :</strong><br>
+            Cette page va supprimer tous les décalages de freeze (freezeDelays) dans Firebase.
+            Les timestamps de freeze reviendront à leurs valeurs par défaut (-24h avant chaque match).
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Attention :</strong><br>
+            Cette action est irréversible. Tous les décalages personnalisés seront supprimés.
+        </div>
+
+        <button id="resetBtn" onclick="resetFreezeDelays()">Supprimer tous les décalages</button>
+        <button onclick="location.reload()">Actualiser la page</button>
+
+        <div id="status"></div>
+        <div id="log" class="log" style="display: none;"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <script>
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDGCbB5tm_Im-JX1kVRGb5KqTHX-KqBa_I",
+            authDomain: "pronostics-coupe-du-monde.firebaseapp.com",
+            databaseURL: "https://pronostics-coupe-du-monde-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "pronostics-coupe-du-monde",
+            storageBucket: "pronostics-coupe-du-monde.firebasestorage.app",
+            messagingSenderId: "1059758706486",
+            appId: "1:1059758706486:web:e4a8e0e0e0e0e0e0e0e0e0"
+        };
+
+        let database;
+
+        function addLog(message, isError = false) {
+            console.log(message); // Aussi dans la console
+            const logDiv = document.getElementById('log');
+            logDiv.style.display = 'block';
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.style.color = isError ? '#721c24' : '#155724';
+            const timestamp = new Date().toLocaleTimeString('fr-FR');
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // Initialiser Firebase au chargement
+        try {
+            addLog('🔧 Initialisation de Firebase...');
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            addLog('✅ Firebase initialisé avec succès');
+        } catch (error) {
+            addLog(`❌ Erreur d'initialisation Firebase: ${error.message}`, true);
+            console.error('Erreur Firebase:', error);
+        }
+
+        async function resetFreezeDelays() {
+            const btn = document.getElementById('resetBtn');
+            const status = document.getElementById('status');
+            
+            btn.disabled = true;
+            status.className = '';
+            status.style.display = 'none';
+            document.getElementById('log').innerHTML = '';
+            
+            addLog('🔄 Début de la suppression des décalages...');
+
+            try {
+                if (!database) {
+                    throw new Error('Firebase n\'est pas initialisé');
+                }
+
+                addLog('📡 Connexion à Firebase...');
+                
+                // Vérifier d'abord si freezeDelays existe
+                addLog('🔍 Vérification de l\'existence de freezeDelays...');
+                const snapshot = await database.ref('freezeDelays').once('value');
+                addLog('✅ Réponse reçue de Firebase');
+                
+                if (!snapshot.exists()) {
+                    addLog('ℹ️ Aucun décalage trouvé dans Firebase');
+                    status.className = 'success';
+                    status.textContent = '✅ Aucun décalage à supprimer. Les timestamps de freeze sont déjà à leurs valeurs par défaut.';
+                    btn.disabled = false;
+                    return;
+                }
+
+                const delays = snapshot.val();
+                const delayKeys = Object.keys(delays);
+                addLog(`📋 Décalages trouvés : ${delayKeys.join(', ')}`);
+                
+                for (const key of delayKeys) {
+                    addLog(`   - ${key}: +${delays[key].hours}h`);
+                }
+
+                // Supprimer tous les décalages
+                addLog('🗑️ Suppression en cours...');
+                await database.ref('freezeDelays').remove();
+                addLog('✅ Tous les décalages ont été supprimés de Firebase');
+
+                status.className = 'success';
+                status.innerHTML = `
+                    <strong>✅ Succès !</strong><br>
+                    Tous les décalages de freeze ont été supprimés.<br>
+                    Les timestamps de freeze sont maintenant à -24h avant chaque match.<br><br>
+                    <strong>⚠️ Important :</strong> Actualisez les pages participant.html et consulta.html (Ctrl+Shift+R) pour appliquer les changements.
+                `;
+
+                addLog('🎉 Opération terminée avec succès');
+
+            } catch (error) {
+                console.error('Erreur complète:', error);
+                addLog(`❌ Erreur : ${error.message}`, true);
+                addLog(`❌ Stack: ${error.stack}`, true);
+                status.className = 'error';
+                status.innerHTML = `
+                    <strong>❌ Erreur !</strong><br>
+                    ${error.message}<br><br>
+                    Vérifiez la console du navigateur (F12) pour plus de détails.
+                `;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // Charger et afficher les décalages actuels au chargement de la page
+        window.addEventListener('load', async () => {
+            addLog('🔍 Vérification des décalages actuels...');
+            try {
+                if (!database) {
+                    addLog('❌ Firebase non initialisé', true);
+                    return;
+                }
+                
+                const snapshot = await database.ref('freezeDelays').once('value');
+                if (snapshot.exists()) {
+                    const delays = snapshot.val();
+                    addLog('📊 Décalages actuels dans Firebase :');
+                    for (const [day, data] of Object.entries(delays)) {
+                        addLog(`   - ${day}: +${data.hours}h`);
+                    }
+                } else {
+                    addLog('✅ Aucun décalage configuré (valeurs par défaut actives)');
+                }
+            } catch (error) {
+                console.error('Erreur de vérification:', error);
+                addLog(`❌ Erreur lors de la vérification : ${error.message}`, true);
+            }
+        });
+    </script>
+</body>
+</html>
