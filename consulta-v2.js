@@ -337,9 +337,12 @@ function renderPublicMatches() {
   
   dayGroups.forEach((dayGroup, dayIndex) => {
     const dayName = dayGroup.name || `JORNADA ${dayIndex + 1}`;
+    const dayNumber = dayGroup.dayNumber || (dayIndex + 1);
     const isLocked = isDayLocked(dayGroup.matches);
     const firstMatchDate = new Date(dayGroup.matches[0].date);
-    const deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
+    // day1-day4 : 24h avant ; day5-day8 (phase finale) : 1h avant
+    const freezeOffsetMs = dayNumber >= 5 ? (1 * 60 * 60 * 1000) : (24 * 60 * 60 * 1000);
+    const deadline = new Date(firstMatchDate.getTime() - freezeOffsetMs);
     
     // Déterminer si cette journée doit être ouverte par défaut
     // Ouvrir la dernière journée verrouillée (la journée en cours avec résultats)
