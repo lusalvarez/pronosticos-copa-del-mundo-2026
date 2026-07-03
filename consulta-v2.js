@@ -1,4 +1,4 @@
-etre 24 H avant l'heure du 1er match soit 21H herue francaise le 28/06// Polyfill pour crypto.randomUUID() (Safari mobile < iOS 15.4)
+// Polyfill pour crypto.randomUUID() (Safari mobile < iOS 15.4)
 if (!crypto.randomUUID) {
   crypto.randomUUID = function() {
     return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
