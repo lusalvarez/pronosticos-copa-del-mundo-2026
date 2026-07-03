@@ -544,7 +544,8 @@ function groupMatchesByDay(matches) {
   return dayGroups;
 }
 
-// Vérifier si une journée est verrouillée (24h avant le premier match + décalage éventuel)
+// Vérifier si une journée est verrouillée
+// day1-day4 : 24h avant le premier match ; day5-day8 (phase finale) : 1h avant
 function isDayLocked(dayMatches, dayIndex = null) {
   if (!dayMatches || dayMatches.length === 0) return false;
   
@@ -558,8 +559,10 @@ function isDayLocked(dayMatches, dayIndex = null) {
   const firstMatchDate = new Date(firstMatch.date);
   const now = new Date();
   
-  // Deadline de base: 24h avant le premier match
-  let deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
+  // day1-day4 : 24h avant ; day5-day8 (phase finale) : 1h avant
+  const dayNum = dayIndex !== null ? dayIndex + 1 : null;
+  const freezeOffsetMs = (dayNum !== null && dayNum >= 5) ? (1 * 60 * 60 * 1000) : (24 * 60 * 60 * 1000);
+  let deadline = new Date(firstMatchDate.getTime() - freezeOffsetMs);
   
   // Appliquer le décalage si disponible (chargé de manière synchrone depuis le cache)
   if (dayIndex !== null && window.freezeDelaysCache && window.freezeDelaysCache[`day${dayIndex + 1}`]) {
@@ -1085,9 +1088,12 @@ function renderAdminMatches() {
   
   dayGroups.forEach((dayGroup, dayIndex) => {
     const dayName = dayGroup.name || `JORNADA ${dayIndex + 1}`;
+    const dayNumber = dayIndex + 1;
     const isLocked = isDayLocked(dayGroup.matches, dayIndex);
     const firstMatchDate = new Date(dayGroup.matches[0].date);
-    let deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
+    // day1-day4 : 24h avant ; day5-day8 (phase finale) : 1h avant
+    const freezeOffsetMs = dayNumber >= 5 ? (1 * 60 * 60 * 1000) : (24 * 60 * 60 * 1000);
+    let deadline = new Date(firstMatchDate.getTime() - freezeOffsetMs);
     
     // Appliquer le décalage de freeze si disponible
     if (window.freezeDelaysCache && window.freezeDelaysCache[`day${dayIndex + 1}`]) {
@@ -1244,7 +1250,7 @@ function renderAdminMatches() {
           ${formatDate(deadline.toISOString())}
         </p>
         <p style="margin: 0.5rem 0 0 0; color: #1e3a8a; font-size: 0.85rem; font-style: italic;">
-          (24 horas antes del primer partido de la jornada)
+          ${dayNumber >= 5 ? '(1 hora antes del primer partido de la jornada)' : '(24 horas antes del primer partido de la jornada)'}
         </p>
       `;
     }
@@ -1815,7 +1821,9 @@ function renderPublicMatches() {
     const dayNumber = dayIndex + 1;
     const isLocked = isDayLocked(dayGroup.matches, dayIndex);
     const firstMatchDate = new Date(dayGroup.matches[0].date);
-    const deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
+    // day1-day4 : 24h avant ; day5-day8 (phase finale) : 1h avant
+    const freezeOffsetMs = dayNumber >= 5 ? (1 * 60 * 60 * 1000) : (24 * 60 * 60 * 1000);
+    const deadline = new Date(firstMatchDate.getTime() - freezeOffsetMs);
     
     // Section de la journée
     const daySection = document.createElement("div");

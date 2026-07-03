@@ -1286,17 +1286,18 @@ function groupMatchesByDay() {
   return dayGroups;
 }
 
-// Vérifier si une journée est verrouillée (24h avant le premier match)
+// Vérifier si une journée est verrouillée
+// day1-day4 : 24h avant le premier match ; day5-day8 : 1h avant le premier match
 // Timestamps de freeze en UTC (millisecondes depuis 1970) - identiques pour tous les fuseaux horaires
 const FREEZE_TIMESTAMPS = {
   day1: 1781118000000,   // 10 juin 2026 21:00 (France) - 24h avant match du 11 juin 21:00
   day2: 1781712000000,   // 17 juin 2026 18:00 (France) - 24h avant match du 18 juin 18:00
   day3: 1782241200000,   // 23 juin 2026 21:00 (France) - 24h avant match du 24 juin 21:00
   day4: 1782662400000,   // 27 juin 2026 21:00 (France) - 24h avant 16èmes de finale (28 juin 21:00)
-  day5: 1783101600000,   // 03 juillet 2026 19:00 (France) - 24h avant 8èmes de finale (04 juillet 19:00)
-  day6: 1783648800000,   // 08 juillet 2026 22:00 (France) - 24h avant quarts de finale (09 juillet 22:00)
-  day7: 1784080800000,   // 13 juillet 2026 21:00 (France) - 24h avant demi-finales (14 juillet 21:00)
-  day8: 1784512800000    // 17 juillet 2026 23:00 (France) - 24h avant finales (18 juillet 23:00)
+  day5: 1783180800000,   // 04 juillet 2026 18:00 (France) - 1h avant 8èmes de finale (04 juillet 19:00)
+  day6: 1783609200000,   // 09 juillet 2026 21:00 (France) - 1h avant quarts de finale (09 juillet 22:00)
+  day7: 1784037600000,   // 14 juillet 2026 20:00 (France) - 1h avant demi-finales (14 juillet 21:00)
+  day8: 1784426400000    // 18 juillet 2026 22:00 (France) - 1h avant finales (18 juillet 23:00)
 };
 
 function isDayLocked(dayMatches) {
@@ -1404,7 +1405,10 @@ function renderMatches() {
     }
     
     const firstMatchDate = new Date(dayGroup.matches[0].date);
-    let deadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
+    // day1-day4 : 24h avant ; day5-day8 (phase finale) : 1h avant
+    const dayNumber = dayGroup.dayNumber || (dayIndex + 1);
+    const freezeOffsetMs = dayNumber >= 5 ? (1 * 60 * 60 * 1000) : (24 * 60 * 60 * 1000);
+    let deadline = new Date(firstMatchDate.getTime() - freezeOffsetMs);
     
     // Appliquer le décalage de freeze si disponible
     if (window.freezeDelaysCache && window.freezeDelaysCache[`day${dayIndex}`]) {
@@ -1515,7 +1519,7 @@ function renderMatches() {
             ${formatDate(deadline.toISOString())}
           </p>
           <p style="margin: 0.5rem 0 0 0; color: #1e3a8a; font-size: 0.85rem; font-style: italic;">
-            (24 horas antes del primer partido de la jornada)
+            ${dayNumber >= 5 ? '(1 hora antes del primer partido de la jornada)' : '(24 horas antes del primer partido de la jornada)'}
           </p>
         `;
       }
