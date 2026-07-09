@@ -644,7 +644,9 @@ async function delayFreeze(dayIndex) {
   
   // Confirmer l'action
   const firstMatchDate = new Date(dayGroup.matches[0].date);
-  const baseDeadline = new Date(firstMatchDate.getTime() - (24 * 60 * 60 * 1000));
+  // day1-day4 : base 24h avant ; day5-day8 (phase finale) : base 1h avant
+  const baseOffsetMs = (dayIndex + 1) >= 5 ? (1 * 60 * 60 * 1000) : (24 * 60 * 60 * 1000);
+  const baseDeadline = new Date(firstMatchDate.getTime() - baseOffsetMs);
   const currentDeadline = new Date(baseDeadline.getTime() + (currentDelayHours * 60 * 60 * 1000));
   const newDeadline = new Date(baseDeadline.getTime() + (newTotalDelayHours * 60 * 60 * 1000));
   

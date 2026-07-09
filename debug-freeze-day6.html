@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Debug + Reset freeze day6</title>
+  <style>
+    body { font-family: monospace; background:#1e1e1e; color:#d4d4d4; padding:2rem; }
+    pre { background:#2d2d2d; padding:1rem; border-radius:6px; }
+    button { margin:0.5rem 0.5rem 0 0; padding:0.6rem 1.2rem; border:none; border-radius:6px; cursor:pointer; font-size:1rem; font-weight:700; }
+    .btn-red { background:#ef4444; color:#fff; }
+    .btn-green { background:#22c55e; color:#fff; }
+    .btn-blue { background:#3b82f6; color:#fff; }
+    #out { margin-top:1.5rem; }
+  </style>
+</head>
+<body>
+<h2>🔍 Debug freeze quarts de finale (day6)</h2>
+<button class="btn-blue" onclick="readState()">Lire Firebase</button>
+<button class="btn-red"  onclick="clearFreeze()">Supprimer freezeDelays/day6</button>
+<button class="btn-green" onclick="unlockDay6()">🔓 DÉBLOQUER les quarts (supprimer delay)</button>
+<div id="out"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+const FREEZE_TIMESTAMPS = {
+  day6: 1783609200000  // 09 juillet 21:00 Paris / 19:00 UTC
+};
+
+function log(html) {
+  document.getElementById('out').innerHTML += html + '<br>';
+}
+
+async function readState() {
+  document.getElementById('out').innerHTML = '';
+  const db = firebase.database();
+
+  // Lire freezeDelays
+  const delaysSnap = await db.ref('freezeDelays').once('value');
+  const delays = delaysSnap.val();
+  log('<pre>freezeDelays Firebase :\n' + JSON.stringify(delays, null, 2) + '</pre>');
+
+  // Calculer le freeze effectif pour day6
+  const base = FREEZE_TIMESTAMPS.day6;
+  let effective = base;
+  if (delays && delays.day6) {
+    const dh = delays.day6.hours || 0;
+    effective = base + dh * 3600000;
+    log(`⏰ day6 base   : ${new Date(base).toISOString()} = ${new Date(base).toLocaleString('fr-FR', {timeZone:'Europe/Paris'})} (Paris)`);
+    log(`⏰ day6 delay  : ${dh}h → freeze effectif = ${new Date(effective).toISOString()} = ${new Date(effective).toLocaleString('fr-FR', {timeZone:'Europe/Paris'})} (Paris)`);
+  } else {
+    log(`⏰ day6 (aucun delay) : freeze = ${new Date(base).toISOString()} = ${new Date(base).toLocaleString('fr-FR', {timeZone:'Europe/Paris'})} (Paris)`);
+  }
+
+  const now = Date.now();
+  log(`🕐 Maintenant : ${new Date(now).toISOString()} = ${new Date(now).toLocaleString('fr-FR', {timeZone:'Europe/Paris'})} (Paris) = ${new Date(now).toLocaleString('es-CO', {timeZone:'America/Bogota'})} (Colombie)`);
+  log(`🔒 Freeze day6 actif ? <strong style="color:${now >= effective ? '#ef4444':'#22c55e'}">${now >= effective ? 'OUI 🔒' : 'NON ✅'}</strong>`);
+}
+
+async function clearFreeze() {
+  if (!confirm('Supprimer freezeDelays/day6 dans Firebase ?')) return;
+  const db = firebase.database();
+  await db.ref('freezeDelays/day6').remove();
+  log('<span style="color:#22c55e">✅ freezeDelays/day6 supprimé.</span>');
+  await readState();
+}
+
+async function unlockDay6() {
+  if (!confirm('Débloquer les quarts de finale en supprimant tout delay Firebase sur day6 ?')) return;
+  const db = firebase.database();
+  await db.ref('freezeDelays/day6').remove();
+  log('<span style="color:#22c55e">✅ Quarts débloqués — les participants peuvent à nouveau saisir leurs pronostics.</span>');
+  await readState();
+}
+
+readState();
+</script>
+</body>
+</html>
