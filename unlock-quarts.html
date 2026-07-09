@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>🔓 Débloquer quarts de finale</title>
+  <style>
+    body { font-family: -apple-system, "Segoe UI", sans-serif; background:#f7f8fa; margin:0; padding:2rem; color:#1f2328; }
+    .box { max-width:640px; margin:0 auto; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:2rem; }
+    h1 { margin:0 0 0.5rem; font-size:1.4rem; }
+    .muted { color:#57606a; font-size:0.9rem; margin:0 0 1.5rem; }
+    pre { background:#f0f4f8; border:1px solid #e5e7eb; border-radius:8px; padding:1rem; font-size:0.85rem; overflow:auto; white-space:pre-wrap; }
+    button { display:block; width:100%; padding:0.85rem; border:none; border-radius:8px; font-size:1rem; font-weight:700; cursor:pointer; margin-bottom:0.75rem; }
+    .btn-green  { background:#16a34a; color:#fff; }
+    .btn-green:hover  { background:#15803d; }
+    .btn-blue   { background:#2563eb; color:#fff; }
+    .btn-blue:hover   { background:#1d4ed8; }
+    .status { padding:0.9rem 1.1rem; border-radius:8px; margin-top:1rem; font-weight:600; display:none; }
+    .ok  { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
+    .err { background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
+    .info { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+  </style>
+</head>
+<body>
+<div class="box">
+  <h1>🔓 Débloquer les quarts de finale</h1>
+  <p class="muted">Lecture de l'état Firebase et remise à zéro du freeze day6.</p>
+
+  <div id="state-display"><pre>⏳ Lecture de Firebase…</pre></div>
+
+  <button class="btn-green" onclick="forceUnlock()">🔓 DÉBLOQUER — Remettre freeze à 21h Paris (maintenant)</button>
+  <button class="btn-blue"  onclick="readAndDisplay()">🔄 Relire l'état Firebase</button>
+
+  <div id="status" class="status"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+// day6 = OCTAVOS... non, CUARTOS DE FINAL
+// FREEZE_TIMESTAMPS.day6 hardcodé dans participant-v4.js et consulta-v2.js
+const DAY6_BASE_MS = 1783609200000; // 09 juillet 2026 19:00 UTC = 21:00 Paris
+
+function showStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+  el.style.display = 'block';
+}
+
+async function readAndDisplay() {
+  const db = firebase.database();
+  const snap = await db.ref('freezeDelays').once('value');
+  const delays = snap.val() || {};
+
+  const now = Date.now();
+  const day6delay = delays.day6 ? (delays.day6.hours || 0) : 0;
+  const effectiveMs = DAY6_BASE_MS + day6delay * 3600000;
+
+  const fmtParis = (ms) => new Date(ms).toLocaleString('fr-FR', {
+    timeZone: 'Europe/Paris', day:'2-digit', month:'2-digit', year:'numeric',
+    hour:'2-digit', minute:'2-digit'
+  });
+  const fmtColombia = (ms) => new Date(ms).toLocaleString('es-CO', {
+    timeZone: 'America/Bogota', day:'2-digit', month:'2-digit', year:'numeric',
+    hour:'2-digit', minute:'2-digit'
+  });
+
+  const locked = now >= effectiveMs;
+
+  document.getElementById('state-display').innerHTML = `<pre>` +
+    `── freezeDelays dans Firebase ──────────────────\n` +
+    JSON.stringify(delays, null, 2) + `\n\n` +
+    `── Calcul freeze day6 (CUARTOS) ────────────────\n` +
+    `Base hardcodée  : ${fmtParis(DAY6_BASE_MS)} Paris\n` +
+    `Delay Firebase  : ${day6delay >= 0 ? '+' : ''}${day6delay}h\n` +
+    `Freeze effectif : ${fmtParis(effectiveMs)} Paris\n` +
+    `                  ${fmtColombia(effectiveMs)} Colombie\n\n` +
+    `── Maintenant ──────────────────────────────────\n` +
+    `${fmtParis(now)} Paris\n` +
+    `${fmtColombia(now)} Colombie\n\n` +
+    `🔒 Freeze ACTIF ? ${locked ? '✅ OUI — les saisies sont bloquées' : '❌ NON — saisies ouvertes'}\n` +
+    `</pre>`;
+}
+
+async function forceUnlock() {
+  const db = firebase.database();
+
+  // Lire l'état actuel pour calculer le bon delta
+  const snap = await db.ref('freezeDelays/day6').once('value');
+  const current = snap.val();
+  const currentHours = current ? (current.hours || 0) : 0;
+
+  const now = Date.now();
+  const effectiveBefore = DAY6_BASE_MS + currentHours * 3600000;
+
+  // On veut que le nouveau freeze soit dans le futur : 21:00 Paris = 19:00 UTC aujourd'hui
+  // Si on est déjà après 19:00 UTC, on reporte à demain 19:00 UTC
+  let targetUtc = new Date(Date.UTC(2026, 6, 9, 19, 0, 0)).getTime(); // 09 juil 19:00 UTC
+  if (now >= targetUtc) {
+    // repousser à la fin de la journée pour ne pas re-bloquer immédiatement
+    // on met le freeze dans 4h à partir de maintenant
+    targetUtc = now + (4 * 3600000);
+  }
+
+  // delay nécessaire = targetUtc - DAY6_BASE_MS, converti en heures
+  const neededDelayMs = targetUtc - DAY6_BASE_MS;
+  const neededDelayHours = neededDelayMs / 3600000;
+
+  const fmtParis = (ms) => new Date(ms).toLocaleString('fr-FR', {
+    timeZone: 'Europe/Paris', day:'2-digit', month:'2-digit', year:'numeric',
+    hour:'2-digit', minute:'2-digit'
+  });
+
+  if (!confirm(
+    `Confirmer le déblocage des quarts ?\n\n` +
+    `Freeze actuel  : ${fmtParis(effectiveBefore)} Paris\n` +
+    `Nouveau freeze : ${fmtParis(targetUtc)} Paris\n` +
+    `Delay écrit    : ${neededDelayHours.toFixed(2)}h dans Firebase\n\n` +
+    `Les participants pourront à nouveau saisir leurs pronostics.`
+  )) return;
+
+  try {
+    await db.ref('freezeDelays/day6').set({
+      hours: neededDelayHours,
+      dayName: 'CUARTOS DE FINAL',
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'unlock-tool'
+    });
+
+    showStatus('✅ Freeze day6 mis à jour — les quarts sont débloqués !', 'ok');
+    await readAndDisplay();
+  } catch(e) {
+    showStatus('❌ Erreur Firebase : ' + e.message, 'err');
+  }
+}
+
+// Lecture automatique au chargement
+readAndDisplay();
+</script>
+</body>
+</html>
