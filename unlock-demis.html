@@ -22,11 +22,11 @@
 <body>
 <div class="box">
   <h1>🔓 Débloquer les demi-finales</h1>
-  <p class="muted">Lit Firebase, calcule le bon delay et reporte le freeze à <strong>20:00 heure française</strong> le 14 juillet.</p>
+  <p class="muted">Reporte le freeze à <strong>21:00 heure française le 14 juillet</strong> sur participant et consulta.</p>
 
   <div id="state-display"><pre>⏳ Lecture de Firebase…</pre></div>
 
-  <button class="btn-green" onclick="forceUnlock()">🔓 DÉBLOQUER — Remettre freeze à 20h France le 14/07</button>
+  <button class="btn-green" onclick="forceUnlock()">🔓 DÉBLOQUER — Freeze à 21h France le 14/07</button>
   <button class="btn-blue"  onclick="readAndDisplay()">🔄 Relire l'état Firebase</button>
 
   <div id="status" class="status"></div>
@@ -36,15 +36,14 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script>
-// day7 hardcodé dans participant-v4.js et consulta-v2.js
-// 14 juillet 2026 20:00 France (CEST=UTC+2) = 18:00 UTC
-const DAY7_BASE_MS = 1784037600000;
+// FREEZE_TIMESTAMPS.day7 hardcodé dans participant-v4.js et consulta-v2.js
+const DAY7_BASE_MS = 1784037600000; // 14 juillet 2026 18:00 UTC = 20:00 France
 
-// Cible souhaitée : 14 juillet 2026 20:00 France = 18:00 UTC
-const TARGET_MS = 1784037600000;
+// Cible souhaitée : 14 juillet 2026 21:00 France (CEST=UTC+2) = 19:00 UTC
+const TARGET_MS = Date.UTC(2026, 6, 14, 19, 0, 0); // 1784041200000
 
-const fmtParis    = ms => new Date(ms).toLocaleString('fr-FR',  { timeZone:'Europe/Paris',    day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-const fmtColombia = ms => new Date(ms).toLocaleString('es-CO',  { timeZone:'America/Bogota',  day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+const fmtParis    = ms => new Date(ms).toLocaleString('fr-FR',  { timeZone:'Europe/Paris',   day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+const fmtColombia = ms => new Date(ms).toLocaleString('es-CO',  { timeZone:'America/Bogota', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
 function showStatus(msg, type) {
   const el = document.getElementById('status');
@@ -63,51 +62,49 @@ async function readAndDisplay() {
   const effectiveMs = DAY7_BASE_MS + day7delay * 3600000;
   const locked = now >= effectiveMs;
 
+  // Calcul du delay qui sera appliqué
+  const neededDelayHours = (TARGET_MS - DAY7_BASE_MS) / 3600000;
+
   document.getElementById('state-display').innerHTML = `<pre>` +
     `── freezeDelays dans Firebase ──────────────────\n` +
     JSON.stringify(delays, null, 2) + `\n\n` +
-    `── Calcul freeze day7 (DEMI-FINALES) ───────────\n` +
-    `Base hardcodée  : ${fmtParis(DAY7_BASE_MS)} France\n` +
+    `── Freeze day7 actuel (DEMI-FINALES) ───────────\n` +
+    `Base hardcodée  : ${fmtParis(DAY7_BASE_MS)} France  (18:00 UTC)\n` +
     `Delay Firebase  : ${day7delay >= 0 ? '+' : ''}${day7delay}h\n` +
     `Freeze effectif : ${fmtParis(effectiveMs)} France\n` +
     `                  ${fmtColombia(effectiveMs)} Colombie\n\n` +
     `── Maintenant ──────────────────────────────────\n` +
     `${fmtParis(now)} France\n` +
     `${fmtColombia(now)} Colombie\n\n` +
-    `🔒 Freeze ACTIF ? <strong style="color:${locked ? '#dc2626':'#16a34a'}">${locked ? 'OUI 🔒 — saisies bloquées' : 'NON ✅ — saisies ouvertes'}</strong>\n` +
+    `🔒 Freeze ACTIF ? <strong style="color:${locked ? '#dc2626':'#16a34a'}">${locked ? 'OUI 🔒 — saisies bloquées' : 'NON ✅ — saisies ouvertes'}</strong>\n\n` +
+    `── Après déblocage ─────────────────────────────\n` +
+    `Delay à écrire  : +${neededDelayHours}h\n` +
+    `Nouveau freeze  : ${fmtParis(TARGET_MS)} France  ← cible\n` +
+    `                  ${fmtColombia(TARGET_MS)} Colombie\n` +
     `</pre>`;
 }
 
 async function forceUnlock() {
-  const db = firebase.database();
-  const now = Date.now();
-
-  // Cible : 20:00 France le 14 juillet = 18:00 UTC = TARGET_MS
-  // Si on est déjà après cette heure, reporter à now + 2h pour laisser le temps
-  let targetMs = TARGET_MS;
-  if (now >= TARGET_MS) {
-    targetMs = now + (2 * 3600000);
-  }
-
-  // delay à écrire = (targetMs - DAY7_BASE_MS) / 3600000
-  const neededDelayHours = (targetMs - DAY7_BASE_MS) / 3600000;
+  // Delay fixe : TARGET_MS - DAY7_BASE_MS converti en heures
+  // TARGET = 14 juil 19:00 UTC, BASE = 14 juil 18:00 UTC → +1h
+  const neededDelayHours = (TARGET_MS - DAY7_BASE_MS) / 3600000;
 
   if (!confirm(
     `Confirmer le déblocage des demi-finales ?\n\n` +
-    `Nouveau freeze : ${fmtParis(targetMs)} France\n` +
-    `                 ${fmtColombia(targetMs)} Colombie\n` +
-    `Delay écrit    : ${neededDelayHours.toFixed(4)}h dans Firebase\n\n` +
-    `Les participants pourront à nouveau saisir leurs pronostics.`
+    `Nouveau freeze : ${fmtParis(TARGET_MS)} France\n` +
+    `                 ${fmtColombia(TARGET_MS)} Colombie\n\n` +
+    `Les participants pourront saisir jusqu'à 21h00 heure française.`
   )) return;
 
   try {
+    const db = firebase.database();
     await db.ref('freezeDelays/day7').set({
       hours: neededDelayHours,
       dayName: 'SEMIFINALES',
       updatedAt: new Date().toISOString(),
       updatedBy: 'unlock-tool'
     });
-    showStatus('✅ Demi-finales débloquées — freeze repoussé à 20h France le 14/07 !', 'ok');
+    showStatus(`✅ Demi-finales débloquées — freeze fixé à 21h00 France le 14/07 (delay = +${neededDelayHours}h)`, 'ok');
     await readAndDisplay();
   } catch(e) {
     showStatus('❌ Erreur Firebase : ' + e.message, 'err');
