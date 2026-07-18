@@ -544,11 +544,30 @@ function groupMatchesByDay(matches) {
   return dayGroups;
 }
 
+// Timestamps de freeze hardcodés (priorité sur le calcul dynamique)
+const FREEZE_TIMESTAMPS = {
+  day8: 1784404800000    // 18 juillet 2026 22:00 (France) - freeze finales
+};
+
 // Vérifier si une journée est verrouillée
 // day1-day4 : 24h avant le premier match ; day5-day8 (phase finale) : 1h avant
 function isDayLocked(dayMatches, dayIndex = null) {
   if (!dayMatches || dayMatches.length === 0) return false;
   
+  const now = new Date();
+  const dayKey = dayIndex !== null ? `day${dayIndex + 1}` : null;
+
+  // Utiliser le timestamp hardcodé si disponible pour cette journée
+  if (dayKey && FREEZE_TIMESTAMPS[dayKey]) {
+    let freezeTs = FREEZE_TIMESTAMPS[dayKey];
+    if (window.freezeDelaysCache && window.freezeDelaysCache[dayKey]) {
+      const delayHours = window.freezeDelaysCache[dayKey].hours || 0;
+      freezeTs += delayHours * 60 * 60 * 1000;
+      console.log(`⏰ [app.js isDayLocked] Décalage appliqué pour ${dayKey}: +${delayHours}h`);
+    }
+    return now.getTime() >= freezeTs;
+  }
+
   // Trouver le premier match de la journée
   const firstMatch = dayMatches.reduce((earliest, match) => {
     const matchDate = new Date(match.date);
@@ -557,7 +576,6 @@ function isDayLocked(dayMatches, dayIndex = null) {
   });
   
   const firstMatchDate = new Date(firstMatch.date);
-  const now = new Date();
   
   // day1-day4 : 24h avant ; day5-day8 (phase finale) : 1h avant
   const dayNum = dayIndex !== null ? dayIndex + 1 : null;
@@ -565,10 +583,10 @@ function isDayLocked(dayMatches, dayIndex = null) {
   let deadline = new Date(firstMatchDate.getTime() - freezeOffsetMs);
   
   // Appliquer le décalage si disponible (chargé de manière synchrone depuis le cache)
-  if (dayIndex !== null && window.freezeDelaysCache && window.freezeDelaysCache[`day${dayIndex + 1}`]) {
-    const delayHours = window.freezeDelaysCache[`day${dayIndex + 1}`].hours || 0;
+  if (dayKey && window.freezeDelaysCache && window.freezeDelaysCache[dayKey]) {
+    const delayHours = window.freezeDelaysCache[dayKey].hours || 0;
     deadline = new Date(deadline.getTime() + (delayHours * 60 * 60 * 1000));
-    console.log(`⏰ [app.js isDayLocked] Décalage appliqué pour day${dayIndex + 1}: +${delayHours}h`);
+    console.log(`⏰ [app.js isDayLocked] Décalage appliqué pour ${dayKey}: +${delayHours}h`);
   }
   
   return now >= deadline;

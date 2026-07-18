@@ -1297,7 +1297,7 @@ const FREEZE_TIMESTAMPS = {
   day5: 1783180800000,   // 04 juillet 2026 18:00 (France) - 1h avant 8èmes de finale (04 juillet 19:00)
   day6: 1783609200000,   // 09 juillet 2026 21:00 (France) - 1h avant quarts de finale (09 juillet 22:00)
   day7: 1784037600000,   // 14 juillet 2026 20:00 (France) - freeze demi-finales (14 juillet)
-  day8: 1784426400000    // 18 juillet 2026 22:00 (France) - 1h avant finales (18 juillet 23:00)
+  day8: 1784404800000    // 18 juillet 2026 22:00 (France) - freeze finales
 };
 
 function isDayLocked(dayMatches) {
